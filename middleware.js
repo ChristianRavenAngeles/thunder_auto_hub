@@ -27,11 +27,6 @@ export async function middleware(request) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // Auth pages — redirect to dashboard if already logged in
-  if (pathname.startsWith('/auth') && user) {
-    return NextResponse.redirect(new URL('/account', request.url))
-  }
-
   // Protected routes
   const isCustomerRoute = PROTECTED_CUSTOMER.some(p => pathname.startsWith(p))
   const isAdminRoute    = PROTECTED_ADMIN.some(p => pathname.startsWith(p))
