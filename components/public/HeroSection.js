@@ -67,7 +67,7 @@ export default function HeroSection() {
 
           {/* Headline */}
           <h1 style={{
-            fontFamily: 'var(--font-display)', fontSize: 'clamp(64px, 8.5vw, 110px)',
+            fontFamily: 'var(--font-display)', fontSize: 'clamp(52px, 6vw, 90px)',
             lineHeight: 0.92, letterSpacing: '-0.01em', marginBottom: 28, color: '#FFFFFF',
           }}>
             <span style={{ display: 'block' }}>YOUR CAR DESERVES</span>

@@ -8,10 +8,10 @@ import toast from 'react-hot-toast'
 /* ── Left panel ─────────────────────────────────────────────────── */
 function LeftPanel() {
   return (
-    <div
-      className="hidden lg:flex flex-col justify-between flex-none relative overflow-hidden"
-      style={{
-        width: '52%',
+    <div style={{
+        width: '52%', flexShrink: 0,
+        display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
+        position: 'relative', overflow: 'hidden',
         padding: '48px 52px',
         backgroundColor: '#0B0B0B',
         backgroundImage: `
@@ -72,7 +72,7 @@ function LeftPanel() {
 
       {/* Logo */}
       <div style={{ position: 'relative', zIndex: 5, animation: 'auth-fadeIn 0.6s ease both' }}>
-        <Link href="/" className="flex items-center gap-2.5 w-fit group">
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
           <div style={{
             width: 38, height: 38, background: '#FFD200', borderRadius: 8,
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -344,10 +344,7 @@ function AuthForm() {
   }
 
   return (
-    <div
-      className="flex min-h-screen"
-      style={{ background: '#0B0B0B', color: '#FFFFFF', fontFamily: 'var(--font-barlow)' }}
-    >
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#0B0B0B', color: '#FFFFFF', fontFamily: 'var(--font-barlow)' }}>
       <LeftPanel />
 
       {/* Right panel */}
@@ -365,10 +362,10 @@ function AuthForm() {
           pointerEvents: 'none',
         }} />
 
-        {/* Mobile logo row */}
-        <div className="lg:hidden w-full mb-6" style={{ maxWidth: 400 }}>
-          <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-2.5">
+        {/* Mobile logo row — hidden on wide screens via JS check not needed, left panel handles it */}
+        <div style={{ display: 'none' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 38, height: 38, background: '#FFD200', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                   <path d="M13 2L4.5 13.5H11L10 22L19.5 10.5H13L13 2Z" fill="#0B0B0B" />
@@ -384,7 +381,7 @@ function AuthForm() {
         </div>
 
         {/* Back to home — desktop */}
-        <div className="hidden lg:block absolute" style={{ top: 40, left: 72 }}>
+        <div style={{ position: 'absolute', top: 40, left: 72 }}>
           <Link href="/" style={{
             display: 'flex', alignItems: 'center', gap: 6,
             color: '#CFCFCF', textDecoration: 'none', fontSize: 13,
