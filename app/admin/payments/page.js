@@ -60,7 +60,7 @@ export default async function PaymentsPage({ searchParams }) {
       <div className="flex gap-2 mb-4">
         {['all','pending','paid','partial','refunded'].map(s => (
           <a key={s} href={`?status=${s}`} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === s ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-gray-200'}`}>
-            {s === 'all' ? 'All' : PAYMENT_STATUS_LABELS[s] || s}
+            {s === 'all' ? 'All' : PAYMENT_STATUS_LABELS[s]?.label || s}
           </a>
         ))}
       </div>
@@ -88,7 +88,7 @@ export default async function PaymentsPage({ searchParams }) {
                 </td>
                 <td className="p-4 text-[var(--text-2)] capitalize">{p.payment_type || '—'}</td>
                 <td className="p-4 font-semibold text-thunder-dark">{formatPrice(p.amount)}</td>
-                <td className="p-4"><span className={`${STATUS_COLOR[p.status] || 'badge-gray'} text-xs`}>{PAYMENT_STATUS_LABELS[p.status] || p.status}</span></td>
+                <td className="p-4"><span className={`${STATUS_COLOR[p.status] || 'badge-gray'} text-xs`}>{PAYMENT_STATUS_LABELS[p.status]?.label || p.status}</span></td>
                 <td className="p-4 text-[var(--text-muted)] text-xs">{formatDate(p.created_at)}</td>
                 <td className="p-4 text-[var(--text-2)] capitalize text-xs">{p.payment_method || '—'}</td>
               </tr>

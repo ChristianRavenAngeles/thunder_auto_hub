@@ -48,7 +48,7 @@ export default async function BookingDetailPage({ params }) {
           <h1 className="text-2xl font-bold font-display text-thunder-dark font-mono">{booking.ref_number}</h1>
           <p className="text-[var(--text-muted)] text-sm mt-0.5">{formatDate(booking.scheduled_date)} at {booking.scheduled_time}</p>
         </div>
-        <span className={`${STATUS_COLOR[booking.status] || 'badge-gray'}`}>{BOOKING_STATUS_LABELS[booking.status]}</span>
+        <span className={`${STATUS_COLOR[booking.status] || 'badge-gray'}`}>{BOOKING_STATUS_LABELS[booking.status]?.label || booking.status}</span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
@@ -89,7 +89,7 @@ export default async function BookingDetailPage({ params }) {
             {booking.discount_amount > 0 && <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Discount</dt><dd className="text-green-600">-{formatPrice(booking.discount_amount)}</dd></div>}
             {booking.travel_fee > 0 && <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Travel</dt><dd>{formatPrice(booking.travel_fee)}</dd></div>}
             <div className="flex justify-between font-bold border-t border-[var(--border)] pt-1.5"><dt>Total</dt><dd className="text-brand-600">{formatPrice(booking.total_amount)}</dd></div>
-            <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Status</dt><dd><span className={`badge-${booking.payment_status === 'paid' ? 'green' : 'gray'} text-xs`}>{PAYMENT_STATUS_LABELS[booking.payment_status]}</span></dd></div>
+            <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Status</dt><dd><span className={`badge-${booking.payment_status === 'paid' ? 'green' : 'gray'} text-xs`}>{PAYMENT_STATUS_LABELS[booking.payment_status]?.label || booking.payment_status}</span></dd></div>
             <div className="flex justify-between"><dt className="text-[var(--text-muted)]">Method</dt><dd className="capitalize">{booking.payment_method || '—'}</dd></div>
           </dl>
         </div>

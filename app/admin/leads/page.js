@@ -33,7 +33,7 @@ export default async function LeadsPage({ searchParams }) {
       <div className="flex gap-2 mb-4">
         {['all','new','contacted','converted','lost'].map(s => (
           <a key={s} href={`?status=${s}`} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === s ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-gray-200'}`}>
-            {s === 'all' ? 'All' : LEAD_STATUS_LABELS[s] || s}
+            {s === 'all' ? 'All' : LEAD_STATUS_LABELS[s]?.label || s}
           </a>
         ))}
       </div>
@@ -58,7 +58,7 @@ export default async function LeadsPage({ searchParams }) {
                   <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {l.phone || '—'}</span>
                 </td>
                 <td className="p-4 text-[var(--text-muted)] capitalize text-xs">{l.source || '—'}</td>
-                <td className="p-4"><span className={`${STATUS_COLOR[l.status] || 'badge-gray'} text-xs`}>{LEAD_STATUS_LABELS[l.status] || l.status}</span></td>
+                <td className="p-4"><span className={`${STATUS_COLOR[l.status] || 'badge-gray'} text-xs`}>{LEAD_STATUS_LABELS[l.status]?.label || l.status}</span></td>
                 <td className="p-4 text-[var(--text-muted)] text-xs max-w-[200px] truncate">{l.notes || '—'}</td>
                 <td className="p-4 text-[var(--text-muted)] text-xs">{formatDate(l.created_at)}</td>
               </tr>

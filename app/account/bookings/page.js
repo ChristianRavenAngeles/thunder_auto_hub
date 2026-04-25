@@ -87,7 +87,7 @@ function BookingCard({ booking: b }) {
           <p className="text-sm text-[var(--text-muted)]">{vehicle} · {b.vehicles?.plate_number}</p>
         </div>
         <span className={`${STATUS_COLOR[b.status] || 'badge-gray'} text-xs`}>
-          {BOOKING_STATUS_LABELS[b.status] || b.status}
+          {BOOKING_STATUS_LABELS[b.status]?.label || b.status}
         </span>
       </div>
       <div className="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
