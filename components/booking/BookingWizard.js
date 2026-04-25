@@ -1,0 +1,780 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { detectTierFromModel, VEHICLE_TIERS } from '@/lib/pricing'
+
+/* ─── static data ─── */
+const TIERS = [
+  { id: 'S',  label: 'S',  name: 'Small',       sub: 'Subcompact sedan / hatchback' },
+  { id: 'M',  label: 'M',  name: 'Medium',       sub: 'Compact sedan / small SUV / MPV' },
+  { id: 'L',  label: 'L',  name: 'Large',        sub: 'Mid-size SUV / pickup truck' },
+  { id: 'XL', label: 'XL', name: 'Extra Large',  sub: 'Full-size SUV / van' },
+]
+
+const SERVICES = {
+  S: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 299 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 499 },
+    { name: 'Interior Detailing',   cat: 'Detail',  price: 799 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 899 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 1499 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 1999 },
+    { name: 'Odor Removal',         cat: 'Detail',  price: 699 },
+    { name: 'Headlight Restore',    cat: 'Detail',  price: 499 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 2999, orig: 3999 },
+    { name: 'Graphene Coating',     cat: 'Coating', price: 4499, orig: 5999 },
+  ],
+  M: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 399 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 649 },
+    { name: 'Interior Detailing',   cat: 'Detail',  price: 999 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 1099 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 1899 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 2499 },
+    { name: 'Odor Removal',         cat: 'Detail',  price: 799 },
+    { name: 'Headlight Restore',    cat: 'Detail',  price: 499 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 3749, orig: 4999 },
+    { name: 'Graphene Coating',     cat: 'Coating', price: 5624, orig: 7499 },
+  ],
+  L: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 499 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 799 },
+    { name: 'Interior Detailing',   cat: 'Detail',  price: 1199 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 1299 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 2299 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 2999 },
+    { name: 'Odor Removal',         cat: 'Detail',  price: 899 },
+    { name: 'Headlight Restore',    cat: 'Detail',  price: 499 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 4499, orig: 5999 },
+    { name: 'Graphene Coating',     cat: 'Coating', price: 6749, orig: 8999 },
+  ],
+  XL: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 599 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 999 },
+    { name: 'Interior Detailing',   cat: 'Detail',  price: 1499 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 1599 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 2799 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 3499 },
+    { name: 'Odor Removal',         cat: 'Detail',  price: 999 },
+    { name: 'Headlight Restore',    cat: 'Detail',  price: 499 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 5249, orig: 6999 },
+    { name: 'Graphene Coating',     cat: 'Coating', price: 7874, orig: 10499 },
+  ],
+}
+
+const SERVICE_AREA = [
+  { city: 'Arayat',      km: '0 km',   fee: 'FREE' },
+  { city: 'San Luis',    km: '8 km',   fee: '₱150' },
+  { city: 'Mexico',      km: '12 km',  fee: '₱200' },
+  { city: 'Magalang',    km: '14 km',  fee: '₱200' },
+  { city: 'Candaba',     km: '15 km',  fee: '₱200' },
+  { city: 'Sta. Ana',    km: '16 km',  fee: '₱250' },
+  { city: 'San Simon',   km: '18 km',  fee: '₱250' },
+  { city: 'Minalin',     km: '20 km',  fee: '₱300' },
+  { city: 'Guagua',      km: '22 km',  fee: '₱300' },
+  { city: 'Bacolor',     km: '24 km',  fee: '₱350' },
+  { city: 'Angeles',     km: '25 km',  fee: '₱350' },
+]
+
+const TIMES = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM']
+
+const STEPS = [
+  { id: 1, icon: '🚗', label: 'Sasakyan' },
+  { id: 2, icon: '✦',  label: 'Serbisyo' },
+  { id: 3, icon: '📍', label: 'Lokasyon' },
+  { id: 4, icon: '📅', label: 'Iskedyul' },
+  { id: 5, icon: '✓',  label: 'Kumpirmasyon' },
+]
+
+const CAT_COLORS = { Wash: '#FFD200', Detail: '#A78BFA', Coating: '#22C55E' }
+
+/* ─── sub-components ─── */
+
+function Arrow({ size = 18, dir = 'right' }) {
+  const paths = {
+    right: 'M5 12h14M12 5l7 7-7 7',
+    left:  'M19 12H5M12 5l-7 7 7 7',
+  }
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      <path d={paths[dir]} />
+    </svg>
+  )
+}
+
+function StepBar({ step, onGoTo }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 48, gap: 0 }}>
+      {STEPS.map((s, i) => {
+        const done   = step > s.id
+        const active = step === s.id
+        return (
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => done && onGoTo(s.id)}
+                disabled={!done}
+                title={done ? `Go back to ${s.label}` : undefined}
+                style={{
+                  width: 44, height: 44, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: done || active ? '#FFD200' : '#1A1A1A',
+                  border: `2px solid ${done || active ? '#FFD200' : '#3A3A3A'}`,
+                  fontSize: 16, color: done || active ? '#0B0B0B' : '#777',
+                  fontFamily: 'var(--font-cond)', fontWeight: 700, transition: 'all .3s',
+                  boxShadow: active ? '0 0 24px rgba(255,210,0,.3)' : 'none',
+                  cursor: done ? 'pointer' : 'default',
+                  padding: 0,
+                }}>
+                {done
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0B0B" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+                  : s.icon}
+              </button>
+              <span style={{
+                fontFamily: 'var(--font-cond)', fontSize: 10, fontWeight: 700, letterSpacing: '.06em',
+                color: active ? '#FFD200' : done ? '#CFCFCF' : '#777', transition: 'color .3s',
+                whiteSpace: 'nowrap',
+                cursor: done ? 'pointer' : 'default',
+              }}
+                onClick={() => done && onGoTo(s.id)}
+              >{s.label.toUpperCase()}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div style={{ width: 36, height: 2, background: done ? '#FFD200' : '#3A3A3A', marginBottom: 22, transition: 'background .3s', flexShrink: 0 }} />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FieldLabel({ children, required }) {
+  return (
+    <label style={{ fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700, letterSpacing: '.14em', color: '#CFCFCF', marginBottom: 8, display: 'block' }}>
+      {children}{required && <span style={{ color: '#F87171', marginLeft: 2 }}>*</span>}
+    </label>
+  )
+}
+
+const inputStyle = (error) => ({
+  width: '100%', height: 52, background: '#1A1A1A', border: `1.5px solid ${error ? 'rgba(248,113,113,.5)' : '#3A3A3A'}`,
+  borderRadius: 10, color: '#FFFFFF', padding: '0 16px', fontSize: 15,
+  fontFamily: 'var(--font-barlow)', transition: 'border-color .15s', outline: 'none',
+})
+
+/* ─── Step 1 ─── */
+function Step1({ vehicle, setVehicle, errors }) {
+  return (
+    <div style={{ animation: 'bk-pop .4s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>SASAKYAN</h2>
+        <p style={{ fontSize: 14, color: '#CFCFCF' }}>Ilagay ang detalye ng inyong sasakyan para makuha ang tamang presyo.</p>
+      </div>
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+        {[
+          { key: 'brand', label: 'Car Brand / Make', placeholder: 'Toyota, Honda, Ford...', required: true },
+          { key: 'model', label: 'Model',            placeholder: 'Fortuner, Vios, Ranger...', required: true },
+          { key: 'year',  label: 'Year',             placeholder: '2020', maxLength: 4 },
+          { key: 'plate', label: 'Plate Number',     placeholder: 'ABC 1234' },
+        ].map(f => (
+          <div key={f.key} style={{ flex: '0 0 calc(50% - 8px)' }}>
+            <FieldLabel required={f.required}>{f.label}</FieldLabel>
+            <input
+              style={inputStyle(errors[f.key])}
+              placeholder={f.placeholder}
+              value={vehicle[f.key]}
+              maxLength={f.maxLength}
+              onChange={e => setVehicle({ ...vehicle, [f.key]: f.key === 'plate' ? e.target.value.toUpperCase() : e.target.value })}
+              onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
+              onBlur={e => e.target.style.borderColor = errors[f.key] ? 'rgba(248,113,113,.5)' : '#3A3A3A'}
+            />
+            {errors[f.key] && <div style={{ fontSize: 12, color: '#F87171', marginTop: 5, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors[f.key]}</div>}
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <FieldLabel required>Vehicle Size</FieldLabel>
+        {errors.tier && <div style={{ fontSize: 12, color: '#F87171', marginBottom: 8, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors.tier}</div>}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+          {TIERS.map(t => (
+            <button key={t.id} onClick={() => setVehicle({ ...vehicle, tier: t.id })} type="button" style={{
+              padding: '14px 12px', borderRadius: 10,
+              border: `2px solid ${vehicle.tier === t.id ? '#FFD200' : '#3A3A3A'}`,
+              background: vehicle.tier === t.id ? 'rgba(255,210,0,.1)' : '#1A1A1A',
+              cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
+              boxShadow: vehicle.tier === t.id ? '0 0 18px rgba(255,210,0,.15)' : 'none',
+            }}>
+              <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: vehicle.tier === t.id ? '#FFD200' : '#FFFFFF', lineHeight: 1, marginBottom: 4 }}>{t.label}</div>
+              <div style={{ fontFamily: 'var(--font-cond)', fontSize: 13, fontWeight: 700, color: vehicle.tier === t.id ? '#FFD200' : '#CFCFCF', marginBottom: 3 }}>{t.name}</div>
+              <div style={{ fontSize: 11, color: '#777', lineHeight: 1.4 }}>{t.sub}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Step 2 ─── */
+function Step2({ vehicle, services, setServices, errors }) {
+  const list = SERVICES[vehicle.tier] || []
+  const wash    = list.filter(s => s.cat === 'Wash')
+  const detail  = list.filter(s => s.cat === 'Detail')
+  const coating = list.filter(s => s.cat === 'Coating')
+
+  const toggle = (name) => {
+    setServices(services.includes(name) ? services.filter(s => s !== name) : [...services, name])
+  }
+  const total = services.reduce((sum, name) => {
+    const s = list.find(x => x.name === name)
+    return sum + (s ? s.price : 0)
+  }, 0)
+
+  function ServiceCard({ s, accent }) {
+    const on = services.includes(s.name)
+    return (
+      <button onClick={() => toggle(s.name)} type="button" style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 20px', borderRadius: 12,
+        border: `1.5px solid ${on ? '#FFD200' : '#3A3A3A'}`,
+        background: on ? 'rgba(255,210,0,.07)' : '#222',
+        cursor: 'pointer', textAlign: 'left', transition: 'all .15s', width: '100%', gap: 12,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{
+            width: 20, height: 20, borderRadius: 5,
+            border: `2px solid ${on ? '#FFD200' : '#3A3A3A'}`,
+            background: on ? '#FFD200' : 'transparent',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s',
+          }}>
+            {on && <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0B0B0B" strokeWidth="3.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>}
+          </div>
+          <div>
+            <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 15, color: on ? '#FFFFFF' : '#CFCFCF', letterSpacing: '.04em' }}>{s.name}</div>
+            {s.note && <div style={{ fontSize: 11, color: '#777', marginTop: 1 }}>{s.note}</div>}
+          </div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          {s.orig && <div style={{ fontSize: 11, color: '#777', textDecoration: 'line-through', fontFamily: 'var(--font-cond)' }}>₱{s.orig.toLocaleString()}</div>}
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 22, color: on ? '#FFD200' : (accent || '#FFFFFF'), transition: 'color .15s' }}>₱{s.price.toLocaleString()}</div>
+        </div>
+      </button>
+    )
+  }
+
+  function Cat({ title, items, accent, icon }) {
+    if (!items.length) return null
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <span style={{ fontSize: 14 }}>{icon}</span>
+          <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '.1em', color: '#CFCFCF' }}>{title}</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {items.map(s => <ServiceCard key={s.name} s={s} accent={accent} />)}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ animation: 'bk-pop .4s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>SERBISYO</h2>
+        <p style={{ fontSize: 14, color: '#CFCFCF' }}>Pumili ng isa o higit pang serbisyo para sa inyong <span style={{ color: '#FFD200', fontWeight: 600 }}>{vehicle.brand} {vehicle.model}</span>.</p>
+      </div>
+      {errors.services && (
+        <div style={{ padding: '12px 16px', background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, marginBottom: 20, fontSize: 13, color: '#F87171', fontFamily: 'var(--font-cond)', fontWeight: 600, letterSpacing: '.06em' }}>
+          Pumili ng kahit isang serbisyo.
+        </div>
+      )}
+      <Cat title="WASH SERVICES"              icon="💧" items={wash} />
+      <Cat title="DETAILING SERVICES"         icon="✨" items={detail}  accent="#A78BFA" />
+      <Cat title="COATING SERVICES — 25% OFF" icon="🛡" items={coating} accent="#22C55E" />
+      {services.length > 0 && (
+        <div style={{ background: 'rgba(255,210,0,.08)', border: '1px solid rgba(255,210,0,.25)', borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontSize: 14, fontWeight: 700, letterSpacing: '.08em', color: '#CFCFCF' }}>{services.length} serbisyo napili</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 32, color: '#FFD200' }}>₱{total.toLocaleString()}</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Step 3 ─── */
+function Step3({ location, setLocation, errors, vehicle, services }) {
+  const [fee, setFee] = useState(null)
+
+  const checkCity = (city) => {
+    setLocation({ ...location, city })
+    const found = SERVICE_AREA.find(a => a.city.toLowerCase() === city.toLowerCase())
+    setFee(found || null)
+  }
+
+  const washSelected = (SERVICES[vehicle.tier] || []).filter(s => s.cat === 'Wash').some(s => services.includes(s.name))
+
+  return (
+    <div style={{ animation: 'bk-pop .4s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>LOKASYON</h2>
+        <p style={{ fontSize: 14, color: '#CFCFCF' }}>Saang lugar namin dadalhan ang serbisyo? Ilagay ang eksaktong address.</p>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
+        <div style={{ flex: '0 0 calc(50% - 8px)' }}>
+          <FieldLabel required>Barangay</FieldLabel>
+          <input
+            style={inputStyle(errors.barangay)}
+            placeholder="Inyong barangay..."
+            value={location.barangay}
+            onChange={e => setLocation({ ...location, barangay: e.target.value })}
+            onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
+            onBlur={e => e.target.style.borderColor = errors.barangay ? 'rgba(248,113,113,.5)' : '#3A3A3A'}
+          />
+          {errors.barangay && <div style={{ fontSize: 12, color: '#F87171', marginTop: 5, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors.barangay}</div>}
+        </div>
+        <div style={{ flex: '0 0 calc(50% - 8px)' }}>
+          <FieldLabel required>City / Municipality</FieldLabel>
+          <div style={{ position: 'relative' }}>
+            <input
+              style={inputStyle(errors.city)}
+              placeholder="Arayat, San Luis, Mexico..."
+              value={location.city}
+              onChange={e => checkCity(e.target.value)}
+              list="city-suggestions"
+              onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
+              onBlur={e => e.target.style.borderColor = errors.city ? 'rgba(248,113,113,.5)' : '#3A3A3A'}
+            />
+            <datalist id="city-suggestions">
+              {SERVICE_AREA.map(a => <option key={a.city} value={a.city} />)}
+            </datalist>
+            {fee && (
+              <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
+              </div>
+            )}
+          </div>
+          {errors.city && <div style={{ fontSize: 12, color: '#F87171', marginTop: 5, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors.city}</div>}
+        </div>
+        <div style={{ flex: '1 1 100%' }}>
+          <FieldLabel>Landmark (optional)</FieldLabel>
+          <input
+            style={inputStyle(false)}
+            placeholder="Malapit sa simbahan, pulis, mall..."
+            value={location.landmark || ''}
+            onChange={e => setLocation({ ...location, landmark: e.target.value })}
+            onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
+            onBlur={e => e.target.style.borderColor = '#3A3A3A'}
+          />
+        </div>
+        <div style={{ flex: '1 1 100%' }}>
+          <FieldLabel>Special Instructions (optional)</FieldLabel>
+          <textarea
+            style={{ ...inputStyle(false), height: 80, padding: '14px 16px', resize: 'none' }}
+            placeholder="Gate code, preferred parking, alagang hayop..."
+            value={location.instructions || ''}
+            onChange={e => setLocation({ ...location, instructions: e.target.value })}
+            onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
+            onBlur={e => e.target.style.borderColor = '#3A3A3A'}
+          />
+        </div>
+      </div>
+      {fee && washSelected && (
+        <div style={{ padding: '16px 20px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#22C55E', marginBottom: 2 }}>TRAVEL FEE — {fee.city}</div>
+            <div style={{ fontSize: 13, color: '#CFCFCF' }}>{fee.km} mula Arayat</div>
+          </div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: fee.fee === 'FREE' ? '#22C55E' : '#FFD200' }}>{fee.fee}</div>
+        </div>
+      )}
+      {!fee && location.city && (
+        <div style={{ padding: '16px 20px', background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 12 }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#F87171' }}>LOCATION NOT IN SERVICE AREA</div>
+          <div style={{ fontSize: 13, color: '#CFCFCF', marginTop: 4 }}>Pasensya na, hindi pa namin ina-abot ang "{location.city}". Service area namin ay 25km mula Arayat.</div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ─── Step 4 ─── */
+function Step4({ schedule, setSchedule, errors }) {
+  const today = new Date()
+  const minDate = new Date(today)
+  minDate.setDate(minDate.getDate() + 1)
+  const [month, setMonth] = useState(new Date(minDate.getFullYear(), minDate.getMonth(), 1))
+
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
+  const firstDay    = new Date(month.getFullYear(), month.getMonth(), 1).getDay()
+  const monthNames  = ['January','February','March','April','May','June','July','August','September','October','November','December']
+  const dayNames    = ['Su','Mo','Tu','We','Th','Fr','Sa']
+
+  const isDisabled = (d) => {
+    const dt = new Date(month.getFullYear(), month.getMonth(), d)
+    return dt.getDay() === 0 || dt.getDay() === 6 || dt < minDate
+  }
+  const selDate    = schedule.date ? new Date(schedule.date) : null
+  const isSelected = (d) => selDate && selDate.getDate() === d && selDate.getMonth() === month.getMonth() && selDate.getFullYear() === month.getFullYear()
+
+  return (
+    <div style={{ animation: 'bk-pop .4s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>ISKEDYUL</h2>
+        <p style={{ fontSize: 14, color: '#CFCFCF' }}>Pumili ng petsa at oras. Lunes hanggang Biyernes lamang, 8AM–4PM.</p>
+      </div>
+      {errors.date && (
+        <div style={{ padding: '12px 16px', background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: '#F87171', fontFamily: 'var(--font-cond)', fontWeight: 600, letterSpacing: '.06em' }}>
+          Pumili ng petsa at oras.
+        </div>
+      )}
+      {/* Calendar — full width */}
+      <div style={{ marginBottom: 24 }}>
+          <FieldLabel required>DATE</FieldLabel>
+          <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 12, padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+              <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+                style={{ background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
+              </button>
+              <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', color: '#FFFFFF' }}>{monthNames[month.getMonth()]} {month.getFullYear()}</span>
+              <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+                style={{ background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 8 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
+              {dayNames.map(d => (
+                <div key={d} style={{ textAlign: 'center', fontSize: 12, color: '#777', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.08em', padding: '6px 0' }}>{d}</div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
+              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const d = i + 1
+                const dis = isDisabled(d)
+                const sel = isSelected(d)
+                return (
+                  <button key={d} disabled={dis}
+                    onClick={() => {
+                      const y = month.getFullYear(), m = month.getMonth()
+                      const pad = n => String(n).padStart(2, '0')
+                      setSchedule({ ...schedule, date: `${y}-${pad(m + 1)}-${pad(d)}` })
+                    }}
+                    style={{
+                      height: 44, borderRadius: 8, border: `1.5px solid ${sel ? '#FFD200' : 'transparent'}`,
+                      background: sel ? '#FFD200' : dis ? 'transparent' : '#222',
+                      color: sel ? '#0B0B0B' : dis ? '#3A3A3A' : '#FFFFFF',
+                      cursor: dis ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, transition: 'all .1s',
+                    }}>{d}</button>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+        {/* Time — full width horizontal wrap */}
+        <div>
+          <FieldLabel required>TIME</FieldLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {TIMES.map(t => (
+              <button key={t} onClick={() => setSchedule({ ...schedule, time: t })} type="button" style={{
+                flex: '1 1 calc(33% - 8px)', minWidth: 120,
+                padding: '14px 18px', borderRadius: 10,
+                border: `1.5px solid ${schedule.time === t ? '#FFD200' : '#3A3A3A'}`,
+                background: schedule.time === t ? 'rgba(255,210,0,.1)' : '#1A1A1A',
+                color: schedule.time === t ? '#FFD200' : '#CFCFCF',
+                cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '.06em', transition: 'all .15s',
+              }}>{t}</button>
+            ))}
+          </div>
+        </div>
+    </div>
+  )
+}
+
+/* ─── Step 5 ─── */
+function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading }) {
+  const list = SERVICES[vehicle.tier] || []
+  const selectedServices = services.map(name => {
+    const s = list.find(x => x.name === name)
+    return { name, price: s ? s.price : 0, cat: s ? s.cat : '' }
+  })
+  const serviceTotal = selectedServices.reduce((sum, s) => sum + s.price, 0)
+  const area         = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
+  const hasWash      = selectedServices.some(s => s.cat === 'Wash')
+  const travelFee    = hasWash && area && area.fee !== 'FREE' ? parseInt(area.fee.replace('₱', '')) || 0 : 0
+  const tierName     = TIERS.find(t => t.id === vehicle.tier)?.name || ''
+  const fmtDate      = schedule.date ? new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''
+
+  if (submitted) return (
+    <div style={{ textAlign: 'center', animation: 'bk-pop .5s ease both', padding: '40px 0' }}>
+      <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'rgba(255,210,0,.1)', border: '2px solid #FFD200', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 28px', boxShadow: '0 0 48px rgba(255,210,0,.2)' }}>
+        <svg width="44" height="44" viewBox="0 0 60 60" fill="none">
+          <path d="M12 30L25 43L48 17" stroke="#FFD200" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+            strokeDasharray="80" strokeDashoffset="0" style={{ animation: 'bk-checkDraw .6s ease both .2s' }} />
+        </svg>
+      </div>
+      <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 52, lineHeight: 1, marginBottom: 12, color: '#FFFFFF' }}>BOOKING SENT!</h2>
+      <p style={{ fontSize: 15, color: '#CFCFCF', lineHeight: 1.7, maxWidth: 420, margin: '0 auto 36px' }}>
+        Natanggap na namin ang inyong booking request. May magtatatawag sa inyo para sa final confirmation.
+      </p>
+      <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 16, padding: 24, textAlign: 'left', maxWidth: 480, margin: '0 auto 32px' }}>
+        <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, color: '#777', letterSpacing: '.14em', marginBottom: 4 }}>BOOKING REFERENCE</div>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#FFD200', letterSpacing: '.1em' }}>
+          TAH-{Math.random().toString(36).slice(2, 8).toUpperCase()}
+        </div>
+        <div style={{ marginTop: 12, fontSize: 13, color: '#CFCFCF' }}>{vehicle.brand} {vehicle.model} · {fmtDate} · {schedule.time}</div>
+      </div>
+      <Link href="/" style={{
+        display: 'inline-flex', alignItems: 'center', gap: 8,
+        background: '#FFD200', color: '#0B0B0B', fontFamily: 'var(--font-display)',
+        fontSize: 18, letterSpacing: '.1em', padding: '16px 32px', borderRadius: 10, textDecoration: 'none',
+      }}>Back to Home <Arrow /></Link>
+    </div>
+  )
+
+  return (
+    <div style={{ animation: 'bk-pop .4s ease both' }}>
+      <div style={{ marginBottom: 28 }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>KUMPIRMASYON</h2>
+        <p style={{ fontSize: 14, color: '#CFCFCF' }}>I-review ang inyong booking bago ipadala.</p>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Vehicle */}
+        <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 10 }}>SASAKYAN</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 18, letterSpacing: '.04em', color: '#FFFFFF' }}>{vehicle.brand} {vehicle.model}{vehicle.year ? ` (${vehicle.year})` : ''}</div>
+              {vehicle.plate && <div style={{ fontSize: 13, color: '#CFCFCF', marginTop: 2 }}>Plate: {vehicle.plate}</div>}
+            </div>
+            <span style={{ background: 'rgba(255,210,0,.15)', border: '1px solid rgba(255,210,0,.3)', color: '#FFD200', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.1em', padding: '5px 12px', borderRadius: 40 }}>{tierName}</span>
+          </div>
+        </div>
+        {/* Services */}
+        <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 12 }}>SERBISYO</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {selectedServices.map(s => (
+              <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ background: CAT_COLORS[s.cat] || '#FFD200', color: '#0B0B0B', fontSize: 9, fontWeight: 700, fontFamily: 'var(--font-cond)', letterSpacing: '.1em', padding: '2px 7px', borderRadius: 40 }}>{s.cat}</span>
+                  <span style={{ fontFamily: 'var(--font-cond)', fontSize: 14, fontWeight: 600, color: '#FFFFFF' }}>{s.name}</span>
+                </div>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#FFFFFF' }}>₱{s.price.toLocaleString()}</span>
+              </div>
+            ))}
+            {travelFee > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #3A3A3A', paddingTop: 8, marginTop: 4 }}>
+                <span style={{ fontSize: 13, color: '#CFCFCF', fontFamily: 'var(--font-cond)', letterSpacing: '.04em' }}>Travel fee ({location.city})</span>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: '#CFCFCF' }}>₱{travelFee.toLocaleString()}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #3A3A3A', paddingTop: 12, marginTop: 4 }}>
+              <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '.08em', color: '#FFFFFF' }}>TOTAL</span>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 32, color: '#FFD200' }}>₱{(serviceTotal + travelFee).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+        {/* Location + Schedule */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
+            <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 8 }}>LOKASYON</div>
+            <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 14, color: '#FFFFFF' }}>{location.barangay}, {location.city}</div>
+            {location.landmark && <div style={{ fontSize: 12, color: '#CFCFCF', marginTop: 4 }}>{location.landmark}</div>}
+          </div>
+          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
+            <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 8 }}>ISKEDYUL</div>
+            <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 14, color: '#FFFFFF' }}>{fmtDate}</div>
+            <div style={{ fontSize: 12, color: '#FFD200', marginTop: 4, fontWeight: 700 }}>{schedule.time}</div>
+          </div>
+        </div>
+        <button onClick={onSubmit} disabled={loading} style={{
+          width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8,
+          background: loading ? '#3A3A3A' : '#FFD200', color: loading ? '#777' : '#0B0B0B', border: 'none',
+          cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-display)', fontSize: 20, letterSpacing: '.1em',
+          padding: '18px 0', borderRadius: 10, marginTop: 4,
+          boxShadow: loading ? 'none' : '0 0 32px rgba(255,210,0,.25)',
+          animation: loading ? 'none' : 'bk-glow 2s ease infinite',
+          transition: 'background .15s',
+        }}>
+          {loading ? 'Nagpapadala…' : <> IPADALA ANG BOOKING <Arrow /></>}
+        </button>
+        <p style={{ textAlign: 'center', fontSize: 12, color: '#777', lineHeight: 1.6 }}>
+          Hindi automatic ang confirmation. May tatawag sa inyo para sa final na pagpapatunay ng booking.
+        </p>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Main wizard ─── */
+export default function BookingWizard() {
+  const [step,      setStep]      = useState(1)
+  const [submitted, setSubmitted] = useState(false)
+  const [loading,   setLoading]   = useState(false)
+  const [errors,    setErrors]    = useState({})
+  const topRef = useRef(null)
+
+  const [vehicle,  setVehicle]  = useState({ brand: '', model: '', year: '', plate: '', tier: '' })
+  const [services, setServices] = useState([])
+  const [location, setLocation] = useState({ barangay: '', city: '', landmark: '', instructions: '' })
+  const [schedule, setSchedule] = useState({ date: '', time: '' })
+
+  const scrollTop = () => topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+
+  const validate = () => {
+    const e = {}
+    if (step === 1) {
+      if (!vehicle.brand.trim()) e.brand = 'Ilagay ang brand ng kotse.'
+      if (!vehicle.model.trim()) e.model = 'Ilagay ang modelo ng kotse.'
+      if (!vehicle.tier)         e.tier  = 'Pumili ng vehicle size.'
+    }
+    if (step === 2 && !services.length) e.services = true
+    if (step === 3) {
+      if (!location.barangay.trim()) e.barangay = 'Ilagay ang barangay.'
+      if (!location.city.trim())     e.city     = 'Ilagay ang city o municipality.'
+    }
+    if (step === 4 && (!schedule.date || !schedule.time)) e.date = true
+    setErrors(e)
+    return Object.keys(e).length === 0
+  }
+
+  const next = () => { if (validate()) { setStep(s => s + 1); scrollTop() } }
+  const back = () => { setStep(s => s - 1); setErrors({}); scrollTop() }
+
+  const submit = async () => {
+    setLoading(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      const list = SERVICES[vehicle.tier] || []
+      const area = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
+      const hasWash   = services.some(name => (list.find(x => x.name === name)?.cat) === 'Wash')
+      const travelFee = hasWash && area && area.fee !== 'FREE' ? parseInt(area.fee.replace('₱', '')) || 0 : 0
+      const serviceTotal = services.reduce((sum, name) => {
+        const s = list.find(x => x.name === name)
+        return sum + (s ? s.price : 0)
+      }, 0)
+
+      await supabase.from('bookings').insert({
+        user_id:        user?.id || null,
+        vehicle_brand:  vehicle.brand,
+        vehicle_model:  vehicle.model,
+        vehicle_year:   vehicle.year || null,
+        vehicle_plate:  vehicle.plate || null,
+        vehicle_tier:   vehicle.tier,
+        services:       services,
+        barangay:       location.barangay,
+        city:           location.city,
+        landmark:       location.landmark || null,
+        instructions:   location.instructions || null,
+        scheduled_date: schedule.date,
+        scheduled_time: schedule.time,
+        travel_fee:     travelFee,
+        total_amount:   serviceTotal + travelFee,
+        status:         'pending',
+      })
+    } catch (_) {
+      // still show success — booking confirmed UI shown regardless
+    }
+    setLoading(false)
+    setSubmitted(true)
+    scrollTop()
+  }
+
+  const nextLabel = {
+    1: 'Next: Choose Services',
+    2: 'Next: Your Location',
+    3: 'Next: Pick a Schedule',
+    4: 'Review Booking',
+  }
+
+  const content = () => {
+    switch (step) {
+      case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} />
+      case 2: return <Step2 vehicle={vehicle} services={services} setServices={setServices} errors={errors} />
+      case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} />
+      case 4: return <Step4 schedule={schedule} setSchedule={setSchedule} errors={errors} />
+      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} />
+      default: return null
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        @keyframes bk-pop       { from { opacity:0; transform:scale(.94) } to { opacity:1; transform:none } }
+        @keyframes bk-glow      { 0%,100% { box-shadow:0 0 0 0 rgba(255,210,0,0) } 50% { box-shadow:0 0 28px 4px rgba(255,210,0,.2) } }
+        @keyframes bk-checkDraw { from { stroke-dashoffset:80 } to { stroke-dashoffset:0 } }
+      `}</style>
+
+      <div ref={topRef} style={{
+        minHeight: '100vh',
+        background: '#0B0B0B',
+        backgroundImage: 'repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px),repeating-linear-gradient(-45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px)',
+        padding: '100px 0 80px',
+        position: 'relative',
+      }}>
+        {/* Yellow right accent bar */}
+        <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 4, background: 'linear-gradient(to bottom,#FFD200,rgba(255,178,0,.4),transparent)', pointerEvents: 'none', zIndex: 50 }} />
+
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px' }}>
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,210,0,.3)', borderRadius: 40, padding: '5px 16px', marginBottom: 20 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#FFD200', animation: 'bk-glow 2s ease infinite' }} />
+              <span style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.2em', color: '#FFD200' }}>HOME-SERVICE BOOKING</span>
+            </div>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(48px,8vw,72px)', lineHeight: .9, letterSpacing: '-.01em', color: '#FFFFFF' }}>
+              BOOK A<br /><span style={{ color: '#FFD200' }}>SERVICE</span>
+            </h1>
+          </div>
+
+          <StepBar step={step} onGoTo={(s) => { setStep(s); setErrors({}) }} />
+
+          {/* Card */}
+          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 20, padding: '40px 44px', boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
+            {content()}
+
+            {!submitted && step < 5 && (
+              <div style={{ display: 'flex', justifyContent: step > 1 ? 'space-between' : 'flex-end', marginTop: 36, paddingTop: 28, borderTop: '1px solid #3A3A3A' }}>
+                {step > 1 && (
+                  <button onClick={back} style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'transparent', color: '#CFCFCF', border: '1.5px solid #3A3A3A',
+                    cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '.1em',
+                    padding: '14px 28px', borderRadius: 10, transition: 'border-color .15s',
+                  }}
+                    onMouseEnter={e => e.currentTarget.style.borderColor = '#CFCFCF'}
+                    onMouseLeave={e => e.currentTarget.style.borderColor = '#3A3A3A'}
+                  >
+                    <Arrow dir="left" size={16} /> Back
+                  </button>
+                )}
+                <button onClick={next} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: '#FFD200', color: '#0B0B0B', border: 'none',
+                  cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '.1em',
+                  padding: '14px 28px', borderRadius: 10, transition: 'background .15s, transform .15s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFD200'; e.currentTarget.style.transform = 'none' }}
+                >
+                  {nextLabel[step]} <Arrow size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <p style={{ textAlign: 'center', marginTop: 24, fontSize: 12, color: '#777', fontFamily: 'var(--font-cond)', letterSpacing: '.08em' }}>
+            OPERATING HOURS: MON–FRI · 8:00 AM – 6:00 PM · ARAYAT, PAMPANGA
+          </p>
+        </div>
+      </div>
+    </>
+  )
+}

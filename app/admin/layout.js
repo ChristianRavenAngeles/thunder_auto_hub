@@ -1,0 +1,27 @@
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminTopBar from '@/components/admin/AdminTopBar'
+
+export const metadata = { title: 'Admin — Thunder Auto Hub' }
+
+export default async function AdminLayout({ children }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/auth?redirect=/admin')
+
+  const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
+  if (!['admin', 'manager', 'staff', 'super_admin'].includes(profile?.role)) redirect('/account')
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#0B0B0B' }}>
+      <AdminSidebar profile={profile} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <AdminTopBar profile={profile} />
+        <main style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#0B0B0B' }}>
+          {children}
+        </main>
+      </div>
+    </div>
+  )
+}
