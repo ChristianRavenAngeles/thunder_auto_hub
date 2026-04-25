@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 
+import { Suspense } from 'react'
 import PublicNav from '@/components/layout/PublicNav'
 import BookingWizard from '@/components/booking/BookingWizard'
 
@@ -13,7 +14,9 @@ export default function BookPage() {
     <>
       <PublicNav />
       <main>
-        <BookingWizard />
+        <Suspense>
+          <BookingWizard />
+        </Suspense>
       </main>
     </>
   )

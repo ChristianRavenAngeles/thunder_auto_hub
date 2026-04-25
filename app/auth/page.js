@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import toast from 'react-hot-toast'
@@ -214,60 +214,6 @@ function LeftPanel() {
   )
 }
 
-/* ── OTP digit boxes ─────────────────────────────────────────────── */
-function OtpInput({ value, onChange, disabled }) {
-  const inputs = useRef([])
-  const digits = value.padEnd(6, '').split('').slice(0, 6)
-
-  function handleKey(e, idx) {
-    if (e.key === 'Backspace') {
-      const next = [...digits]
-      if (next[idx]) { next[idx] = ''; onChange(next.join('')) }
-      else if (idx > 0) inputs.current[idx - 1]?.focus()
-    } else if (/^\d$/.test(e.key)) {
-      const next = [...digits]
-      next[idx] = e.key
-      onChange(next.join(''))
-      if (idx < 5) inputs.current[idx + 1]?.focus()
-      e.preventDefault()
-    }
-  }
-
-  function handlePaste(e) {
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (pasted.length === 6) { onChange(pasted); inputs.current[5]?.focus() }
-  }
-
-  return (
-    <div style={{ display: 'flex', gap: 'clamp(6px, 2vw, 10px)', justifyContent: 'space-between' }} onPaste={handlePaste}>
-      {[0,1,2,3,4,5].map(i => (
-        <input
-          key={i}
-          ref={el => inputs.current[i] = el}
-          type="text" inputMode="numeric" maxLength={1}
-          value={digits[i] || ''}
-          readOnly
-          onKeyDown={e => handleKey(e, i)}
-          onClick={() => inputs.current[i]?.focus()}
-          disabled={disabled}
-          autoFocus={i === 0}
-          style={{
-            width: 'clamp(38px, 13vw, 52px)', height: 'clamp(48px, 15vw, 62px)',
-            flex: '1 1 0', maxWidth: 52,
-            background: digits[i] ? 'rgba(255,210,0,0.1)' : '#1F1F1F',
-            border: `2px solid ${digits[i] ? '#FFD200' : '#3A3A3A'}`,
-            borderRadius: 10,
-            color: digits[i] ? '#FFD200' : '#FFFFFF',
-            fontSize: 26, fontFamily: 'var(--font-display)',
-            textAlign: 'center', outline: 'none', cursor: 'text', transition: 'all 0.15s',
-            animation: digits[i] ? 'auth-otpBounce 0.2s ease' : 'none',
-          }}
-        />
-      ))}
-    </div>
-  )
-}
-
 /* ── Shared CTA button style ─────────────────────────────────────── */
 function ctaStyle(active) {
   return {
@@ -291,94 +237,48 @@ function AuthForm() {
   const supabase = useMemo(() => createClient(), [])
 
   const [role,     setRole]     = useState(roleParam === 'staff' ? 'staff' : 'customer')
-  const [step,     setStep]     = useState('phone') // phone | otp | success
-  const [phone,    setPhone]    = useState('')
-  const [otp,      setOtp]      = useState('')
-  const [name,     setName]     = useState('')
+  const [step,     setStep]     = useState('form') // form | success
   const [isNew,    setIsNew]    = useState(false)
+  const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
+  const [showPassC,setShowPassC]= useState(false)
+  const [confirm,  setConfirm]  = useState('')
   const [loading,  setLoading]  = useState(false)
-  const [countdown,setCountdown]= useState(0)
-  const timerRef = useRef(null)
 
-  function formatPhone(v) {
-    const d = v.replace(/\D/g, '').slice(0, 11)
-    if (d.length <= 4) return d
-    if (d.length <= 7) return `${d.slice(0,4)} ${d.slice(4)}`
-    return `${d.slice(0,4)} ${d.slice(4,7)} ${d.slice(7)}`
-  }
+  const emailValid      = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  const passwordValid   = password.length >= 8
+  const customerValid   = emailValid && passwordValid && (!isNew || (name.trim() && confirm === password))
+  const staffFormValid  = Boolean(email.trim() && password)
 
-  const rawPhone   = phone.replace(/\s/g, '')
-  const phoneValid = rawPhone.length === 11 && rawPhone.startsWith('09')
-  const maskedPhone = phone.replace(/\s/g, '').replace(/(\d{4})\d{4}(\d{3})/, '$1 •••• $2')
-  const staffFormValid = Boolean(email.trim() && password)
   const panelMeta = role === 'staff'
-    ? {
-        badge: 'STAFF PORTAL',
-        title: 'Secure Team Access',
-        description: 'Operational login for admin, manager, staff, and rider accounts.',
-      }
-    : step === 'otp'
-      ? {
-          badge: 'ONE-TIME PASSCODE',
-          title: 'Almost There',
-          description: 'Confirm your code to continue to your account securely.',
+    ? { badge: 'STAFF PORTAL', title: 'Secure Team Access', description: 'Operational login for admin, manager, staff, and rider accounts.' }
+    : step === 'success'
+      ? { badge: 'ACCESS GRANTED', title: 'You Are Ready', description: 'Your account is set and your dashboard is waiting.' }
+      : {
+          badge: isNew ? 'NEW CUSTOMER' : 'CUSTOMER LOGIN',
+          title: isNew ? 'Create Your Account' : 'Book Faster Every Time',
+          description: isNew
+            ? 'Sign up once and keep your details ready for future bookings and tracking.'
+            : 'Login with your email to access bookings, tracking, and account management.',
         }
-      : step === 'success'
-        ? {
-            badge: 'ACCESS GRANTED',
-            title: 'You Are Ready',
-            description: 'Your account is set and your dashboard is waiting.',
-          }
-        : {
-            badge: isNew ? 'NEW CUSTOMER' : 'CUSTOMER LOGIN',
-            title: isNew ? 'Create Your Premium Care Account' : 'Book Faster Every Time',
-            description: isNew
-              ? 'Sign up once and keep your details ready for future bookings and tracking.'
-              : 'Login with your mobile number for quick booking updates, tracking, and account access.',
-          }
-
-  useEffect(() => {
-    if (countdown <= 0) { clearInterval(timerRef.current); return }
-    timerRef.current = setInterval(() => {
-      setCountdown(c => { if (c <= 1) { clearInterval(timerRef.current); return 0 } return c - 1 })
-    }, 1000)
-    return () => clearInterval(timerRef.current)
-  }, [countdown])
 
   useEffect(() => {
     setRole(roleParam === 'staff' ? 'staff' : 'customer')
   }, [roleParam])
 
-  async function handleSendOTP(e) {
+  async function handleCustomerSubmit(e) {
     e?.preventDefault()
-    if (!phoneValid) return
+    if (!customerValid) return
     setLoading(true)
     try {
-      const res  = await fetch('/api/auth/send-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: rawPhone }) })
+      const url = isNew ? '/api/auth/customer-register' : '/api/auth/customer-login'
+      const body = isNew ? { email, password, name } : { email, password }
+      const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      toast.success('OTP sent! Check your SMS.')
-      setStep('otp')
-      setCountdown(60)
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleVerifyOTP(e) {
-    e?.preventDefault()
-    if (otp.length < 6) return
-    setLoading(true)
-    try {
-      const res  = await fetch('/api/auth/verify-otp', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phone: rawPhone, otp, name: isNew ? name : undefined }) })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      toast.success('Welcome to Thunder Auto Hub!')
+      toast.success(isNew ? 'Account created!' : 'Welcome back!')
       setStep('success')
     } catch (err) {
       toast.error(err.message)
@@ -414,12 +314,11 @@ function AuthForm() {
 
   function switchRole(val) {
     setRole(val)
-    setStep('phone')
-    setPhone('')
-    setOtp('')
+    setStep('form')
     setName('')
     setEmail('')
     setPassword('')
+    setConfirm('')
 
     const nextParams = new URLSearchParams(params.toString())
     if (val === 'staff') nextParams.set('role', 'staff')
@@ -558,7 +457,7 @@ function AuthForm() {
         <div style={{
           position: 'relative',
           borderRadius: 28,
-          padding: '28px 26px 24px',
+          padding: isNew ? '20px 26px 20px' : '28px 26px 24px',
           background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
           border: '1px solid rgba(255,255,255,0.10)',
           backdropFilter: 'blur(22px)',
@@ -576,27 +475,29 @@ function AuthForm() {
             border: '1px solid rgba(255,255,255,0.04)', pointerEvents: 'none',
           }} />
 
-          <div style={{ position: 'relative', zIndex: 2, marginBottom: step === 'success' ? 10 : 24 }}>
+          <div style={{ position: 'relative', zIndex: 2, marginBottom: step === 'success' ? 10 : isNew ? 12 : 20 }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              borderRadius: 999, padding: '7px 12px',
+              borderRadius: 999, padding: '5px 10px',
               background: 'rgba(255,210,0,0.10)',
               border: '1px solid rgba(255,210,0,0.18)',
               color: '#FFD200', fontFamily: 'var(--font-cond)', fontSize: 11,
-              letterSpacing: '0.18em', fontWeight: 700, marginBottom: 14,
+              letterSpacing: '0.18em', fontWeight: 700, marginBottom: isNew ? 8 : 12,
             }}>
               <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FFD200', boxShadow: '0 0 14px rgba(255,210,0,0.8)' }} />
               {panelMeta.badge}
             </div>
             <h2 style={{
-              fontFamily: 'var(--font-display)', fontSize: 34, lineHeight: 0.98,
-              letterSpacing: '0.01em', color: '#FFFFFF', marginBottom: 10,
+              fontFamily: 'var(--font-display)', fontSize: isNew ? 24 : 34, lineHeight: 0.98,
+              letterSpacing: '0.01em', color: '#FFFFFF', marginBottom: isNew ? 6 : 10,
             }}>
               {panelMeta.title}
             </h2>
-            <p style={{ color: '#BDBDBD', fontSize: 14, lineHeight: 1.65, maxWidth: 420 }}>
-              {panelMeta.description}
-            </p>
+            {!isNew && (
+              <p style={{ color: '#BDBDBD', fontSize: 14, lineHeight: 1.65, maxWidth: 420 }}>
+                {panelMeta.description}
+              </p>
+            )}
           </div>
 
           {/* Role toggle */}
@@ -604,7 +505,7 @@ function AuthForm() {
             <div style={{
               display: 'grid', gridTemplateColumns: '1fr 1fr',
               background: 'rgba(8,8,8,0.66)', borderRadius: 16, padding: 5,
-              marginBottom: 34,
+              marginBottom: isNew ? 16 : 34,
               animation: 'auth-fadeUp 0.6s ease both',
               border: '1px solid rgba(255,255,255,0.08)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
@@ -634,50 +535,12 @@ function AuthForm() {
             </div>
           )}
 
-        {/* ── Customer: Phone step ── */}
-        {role === 'customer' && step === 'phone' && (
-          <form onSubmit={handleSendOTP} style={{ animation: 'auth-fadeUp 0.5s ease both' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 42, letterSpacing: '0.01em', lineHeight: 1, marginBottom: 8, color: '#FFFFFF' }}>
-              {isNew ? 'CREATE ACCOUNT' : 'MAG-LOGIN'}
-            </h2>
-            <p style={{ fontSize: 14, color: '#CFCFCF', marginBottom: 32, lineHeight: 1.5 }}>
-              {isNew ? 'I-enter ang iyong phone number para mag-sign up.' : 'I-enter ang iyong phone number para makatanggap ng OTP.'}
-            </p>
-
-            <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 8 }}>
-              PHONE NUMBER
-            </label>
-            <div style={{ position: 'relative', marginBottom: 20 }}>
-              <div style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 8, pointerEvents: 'none' }}>
-                <span style={{ fontSize: 18 }}>🇵🇭</span>
-                <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 600, color: '#CFCFCF', fontSize: 13 }}>+63</span>
-                <div style={{ width: 1, height: 18, background: '#3A3A3A' }} />
-              </div>
-              <input
-                type="tel" placeholder="09XX XXX XXXX" value={phone}
-                onChange={e => setPhone(formatPhone(e.target.value))}
-                onKeyDown={e => e.key === 'Enter' && handleSendOTP()}
-                style={{
-                  width: '100%', height: 58, background: '#1F1F1F',
-                  border: `2px solid ${phoneValid ? '#FFD200' : '#3A3A3A'}`,
-                  borderRadius: 12, color: '#FFFFFF',
-                  paddingLeft: 90, paddingRight: 20,
-                  fontSize: 18, fontFamily: 'var(--font-cond)', fontWeight: 600, letterSpacing: '0.08em',
-                  outline: 'none', transition: 'border-color 0.2s',
-                }}
-                onFocus={e => { if (!phoneValid) e.target.style.borderColor = 'rgba(255,210,0,0.4)' }}
-                onBlur={e => { if (!phoneValid) e.target.style.borderColor = '#3A3A3A' }}
-              />
-              {phoneValid && (
-                <div style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#FFD200' }}>
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
-                </div>
-              )}
-            </div>
-
+        {/* ── Customer: Email + Password form ── */}
+        {role === 'customer' && step === 'form' && (
+          <form onSubmit={handleCustomerSubmit} style={{ animation: 'auth-fadeUp 0.5s ease both' }}>
             {/* New account toggle */}
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: isNew ? 16 : 28, userSelect: 'none' }}>
-              <div onClick={() => setIsNew(!isNew)} style={{
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', marginBottom: 20, userSelect: 'none' }}>
+              <div onClick={() => { setIsNew(!isNew); setConfirm('') }} style={{
                 width: 20, height: 20, borderRadius: 5,
                 background: isNew ? '#FFD200' : '#1F1F1F',
                 border: `2px solid ${isNew ? '#FFD200' : '#3A3A3A'}`,
@@ -688,20 +551,20 @@ function AuthForm() {
               </div>
               <span style={{ fontSize: 14, color: '#CFCFCF' }}>
                 First time?{' '}
-                <span style={{ color: '#FFD200', fontWeight: 600 }} onClick={() => setIsNew(!isNew)}>Create new account</span>
+                <span style={{ color: '#FFD200', fontWeight: 600 }}>Create new account</span>
               </span>
             </label>
 
             {isNew && (
-              <div style={{ marginBottom: 28 }}>
-                <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 8 }}>FULL NAME</label>
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 6 }}>FULL NAME</label>
                 <input
                   placeholder="Juan dela Cruz" value={name} onChange={e => setName(e.target.value)}
                   style={{
-                    width: '100%', height: 58, background: '#1F1F1F',
+                    width: '100%', height: 52, background: '#1F1F1F',
                     border: '2px solid #3A3A3A', borderRadius: 12,
                     color: '#FFFFFF', paddingLeft: 20, paddingRight: 20,
-                    fontSize: 16, fontFamily: 'var(--font-cond)', fontWeight: 500,
+                    fontSize: 15, fontFamily: 'var(--font-cond)', fontWeight: 500,
                     outline: 'none', transition: 'border-color 0.2s',
                   }}
                   onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,0.4)'}
@@ -710,64 +573,114 @@ function AuthForm() {
               </div>
             )}
 
-            <button type="submit" disabled={!phoneValid || loading}
-              style={ctaStyle(phoneValid && !loading)}
-              onMouseEnter={e => { if (phoneValid) { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}}
-              onMouseLeave={e => { e.currentTarget.style.background = phoneValid ? '#FFD200' : '#1F1F1F'; e.currentTarget.style.transform = '' }}
+            <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 6 }}>EMAIL ADDRESS</label>
+            <div style={{ position: 'relative', marginBottom: 16 }}>
+              <div style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3A3A3A' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+              </div>
+              <input
+                type="email" placeholder="juan@email.com" value={email}
+                onChange={e => setEmail(e.target.value)} autoComplete="email"
+                style={{
+                  width: '100%', height: 52, background: '#1F1F1F',
+                  border: `2px solid ${emailValid ? '#FFD200' : '#3A3A3A'}`,
+                  borderRadius: 12, color: '#FFFFFF',
+                  paddingLeft: 48, paddingRight: 20,
+                  fontSize: 15, fontFamily: 'var(--font-cond)', fontWeight: 500,
+                  outline: 'none', transition: 'border-color 0.2s',
+                }}
+                onFocus={e => { if (!emailValid) e.target.style.borderColor = 'rgba(255,210,0,0.4)' }}
+                onBlur={e => { if (!emailValid) e.target.style.borderColor = '#3A3A3A' }}
+              />
+              {emailValid && (
+                <div style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', color: '#FFD200' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+              )}
+            </div>
+
+            <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 6 }}>PASSWORD</label>
+            <div style={{ position: 'relative', marginBottom: isNew ? 16 : 24 }}>
+              <div style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3A3A3A' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </div>
+              <input
+                type={showPass ? 'text' : 'password'} placeholder="Min. 8 characters" value={password}
+                onChange={e => setPassword(e.target.value)} autoComplete={isNew ? 'new-password' : 'current-password'}
+                style={{
+                  width: '100%', height: 52, background: '#1F1F1F',
+                  border: `2px solid ${passwordValid ? '#FFD200' : '#3A3A3A'}`,
+                  borderRadius: 12, color: '#FFFFFF',
+                  paddingLeft: 48, paddingRight: 52,
+                  fontSize: 15, fontFamily: 'var(--font-cond)', fontWeight: 500,
+                  outline: 'none', transition: 'border-color 0.2s',
+                }}
+                onFocus={e => { if (!passwordValid) e.target.style.borderColor = 'rgba(255,210,0,0.4)' }}
+                onBlur={e => { if (!passwordValid) e.target.style.borderColor = '#3A3A3A' }}
+              />
+              <button type="button" onClick={() => setShowPass(!showPass)} style={{
+                position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 0,
+              }}>
+                {showPass
+                  ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
+
+            {isNew && (
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 6 }}>CONFIRM PASSWORD</label>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#3A3A3A' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                  <input
+                    type={showPassC ? 'text' : 'password'} placeholder="Repeat password" value={confirm}
+                    onChange={e => setConfirm(e.target.value)} autoComplete="new-password"
+                    style={{
+                      width: '100%', height: 52, background: '#1F1F1F',
+                      border: `2px solid ${confirm && confirm === password ? '#FFD200' : '#3A3A3A'}`,
+                      borderRadius: 12, color: '#FFFFFF',
+                      paddingLeft: 48, paddingRight: 52,
+                      fontSize: 15, fontFamily: 'var(--font-cond)', fontWeight: 500,
+                      outline: 'none', transition: 'border-color 0.2s',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,0.4)'}
+                    onBlur={e => e.target.style.borderColor = confirm && confirm === password ? '#FFD200' : '#3A3A3A'}
+                  />
+                  <button type="button" onClick={() => setShowPassC(!showPassC)} style={{
+                    position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 0,
+                  }}>
+                    {showPassC
+                      ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                      : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                    }
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button type="submit" disabled={!customerValid || loading}
+              style={ctaStyle(customerValid && !loading)}
+              onMouseEnter={e => { if (customerValid && !loading) { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}}
+              onMouseLeave={e => { e.currentTarget.style.background = customerValid && !loading ? '#FFD200' : '#1F1F1F'; e.currentTarget.style.transform = '' }}
             >
               {loading
                 ? <div style={{ width: 22, height: 22, border: '3px solid rgba(0,0,0,0.3)', borderTopColor: '#0B0B0B', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-                : <>SEND OTP <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
+                : isNew
+                  ? <>CREATE ACCOUNT <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
+                  : <>LOGIN <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg></>
               }
             </button>
 
-            <p style={{ textAlign: 'center', fontSize: 12, color: '#555', marginTop: 20, lineHeight: 1.6 }}>
+            <p style={{ textAlign: 'center', fontSize: 12, color: '#555', marginTop: 16, lineHeight: 1.6 }}>
               By continuing, you agree to our{' '}
               <Link href="/terms" style={{ color: '#CFCFCF', textDecoration: 'underline' }}>Terms</Link> and{' '}
               <Link href="/privacy" style={{ color: '#CFCFCF', textDecoration: 'underline' }}>Privacy Policy</Link>.
             </p>
-          </form>
-        )}
-
-        {/* ── Customer: OTP step ── */}
-        {role === 'customer' && step === 'otp' && (
-          <form onSubmit={handleVerifyOTP} style={{ animation: 'auth-fadeUp 0.5s ease both' }}>
-            <button type="button" onClick={() => { setStep('phone'); setOtp('') }} style={{
-              display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none',
-              color: '#CFCFCF', cursor: 'pointer', fontSize: 13,
-              fontFamily: 'var(--font-cond)', letterSpacing: '0.08em', marginBottom: 32, padding: 0,
-            }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-              CHANGE NUMBER
-            </button>
-
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 42, lineHeight: 1, marginBottom: 8, color: '#FFFFFF' }}>CHECK YOUR SMS</h2>
-            <p style={{ fontSize: 14, color: '#CFCFCF', marginBottom: 8, lineHeight: 1.5 }}>Nagpadala kami ng 6-digit code sa</p>
-            <p style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 17, color: '#FFD200', letterSpacing: '0.12em', marginBottom: 36 }}>{maskedPhone}</p>
-
-            <label style={{ display: 'block', fontFamily: 'var(--font-cond)', fontSize: 12, letterSpacing: '0.15em', color: '#CFCFCF', fontWeight: 600, marginBottom: 14 }}>ENTER OTP</label>
-            <div style={{ marginBottom: 32 }}>
-              <OtpInput value={otp} onChange={setOtp} disabled={loading} />
-            </div>
-
-            <button type="submit" disabled={otp.length < 6 || loading}
-              style={ctaStyle(otp.length === 6 && !loading)}
-              onMouseEnter={e => { if (otp.length === 6) { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}}
-              onMouseLeave={e => { e.currentTarget.style.background = otp.length === 6 ? '#FFD200' : '#1F1F1F'; e.currentTarget.style.transform = '' }}
-            >
-              {loading
-                ? <div style={{ width: 22, height: 22, border: '3px solid rgba(0,0,0,0.3)', borderTopColor: '#0B0B0B', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
-                : 'VERIFY & CONTINUE'
-              }
-            </button>
-
-            <div style={{ textAlign: 'center', marginTop: 24, fontSize: 13, color: '#CFCFCF' }}>
-              Di natanggap?{' '}
-              {countdown > 0
-                ? <span style={{ color: '#3A3A3A' }}>Resend in {countdown}s</span>
-                : <span onClick={handleSendOTP} style={{ color: '#FFD200', cursor: 'pointer', fontWeight: 600 }}>Resend OTP</span>
-              }
-            </div>
           </form>
         )}
 
@@ -789,11 +702,11 @@ function AuthForm() {
                 />
               </svg>
             </div>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 46, lineHeight: 1, marginBottom: 12, color: '#FFFFFF' }}>WELCOME BACK!</h2>
-            <p style={{ fontSize: 15, color: '#CFCFCF', lineHeight: 1.6, marginBottom: 36 }}>Naka-login ka na. Handa na ang iyong dashboard. 🚗</p>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 46, lineHeight: 1, marginBottom: 12, color: '#FFFFFF' }}>{isNew ? 'ACCOUNT CREATED!' : 'WELCOME BACK!'}</h2>
+            <p style={{ fontSize: 15, color: '#CFCFCF', lineHeight: 1.6, marginBottom: 36 }}>Naka-login ka na. Handa na ang iyong dashboard.</p>
             <div style={{ background: '#1F1F1F', borderRadius: 14, padding: '20px 24px', border: '1px solid #3A3A3A', marginBottom: 28, textAlign: 'left' }}>
               <div style={{ fontSize: 11, color: '#CFCFCF', fontFamily: 'var(--font-cond)', letterSpacing: '0.15em', marginBottom: 6 }}>LOGGED IN AS</div>
-              <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 18, letterSpacing: '0.1em', color: '#FFFFFF' }}>{maskedPhone}</div>
+              <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 18, letterSpacing: '0.1em', color: '#FFFFFF' }}>{email}</div>
               <div style={{ display: 'inline-block', marginTop: 8, padding: '3px 10px', background: 'rgba(255,210,0,0.12)', border: '1px solid rgba(255,210,0,0.3)', borderRadius: 6, fontSize: 11, color: '#FFD200', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '0.12em' }}>CUSTOMER</div>
             </div>
             <button onClick={() => { router.push(redirect); router.refresh() }}

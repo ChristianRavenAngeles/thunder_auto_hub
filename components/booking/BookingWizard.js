@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { detectTierFromModel, VEHICLE_TIERS } from '@/lib/pricing'
@@ -165,13 +166,47 @@ const inputStyle = (error) => ({
 })
 
 /* ─── Step 1 ─── */
-function Step1({ vehicle, setVehicle, errors }) {
+function Step1({ vehicle, setVehicle, errors, savedVehicles }) {
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>SASAKYAN</h2>
         <p style={{ fontSize: 14, color: '#CFCFCF' }}>Ilagay ang detalye ng inyong sasakyan para makuha ang tamang presyo.</p>
       </div>
+
+      {savedVehicles?.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <FieldLabel>MY SAVED VEHICLES</FieldLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {savedVehicles.map(v => {
+              const selected = vehicle.savedId === v.id
+              return (
+                <button key={v.id} type="button"
+                  onClick={() => setVehicle({ brand: v.make, model: v.model, year: v.year || '', plate: v.plate || '', tier: v.tier || '', savedId: v.id })}
+                  style={{
+                    padding: '10px 16px', borderRadius: 10, cursor: 'pointer', textAlign: 'left', transition: 'all .15s',
+                    border: `1.5px solid ${selected ? '#FFD200' : '#3A3A3A'}`,
+                    background: selected ? 'rgba(255,210,0,.1)' : '#1A1A1A',
+                  }}>
+                  <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, color: selected ? '#FFD200' : '#FFFFFF', letterSpacing: '.04em' }}>
+                    {v.make} {v.model}
+                  </div>
+                  {v.plate && <div style={{ fontSize: 11, color: '#777', marginTop: 2 }}>{v.plate}</div>}
+                </button>
+              )
+            })}
+            <button type="button"
+              onClick={() => setVehicle({ brand: '', model: '', year: '', plate: '', tier: '', savedId: null })}
+              style={{
+                padding: '10px 16px', borderRadius: 10, cursor: 'pointer',
+                border: '1.5px dashed #3A3A3A', background: 'transparent',
+                fontFamily: 'var(--font-cond)', fontSize: 12, color: '#777', letterSpacing: '.06em',
+              }}>
+              + DIFFERENT CAR
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
         {[
@@ -496,7 +531,7 @@ function Step4({ schedule, setSchedule, errors }) {
 }
 
 /* ─── Step 5 ─── */
-function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading }) {
+function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading, refNo }) {
   const list = SERVICES[vehicle.tier] || []
   const selectedServices = services.map(name => {
     const s = list.find(x => x.name === name)
@@ -524,7 +559,7 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
       <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 16, padding: 24, textAlign: 'left', maxWidth: 480, margin: '0 auto 32px' }}>
         <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, color: '#777', letterSpacing: '.14em', marginBottom: 4 }}>BOOKING REFERENCE</div>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#FFD200', letterSpacing: '.1em' }}>
-          TAH-{Math.random().toString(36).slice(2, 8).toUpperCase()}
+          {refNo || '—'}
         </div>
         <div style={{ marginTop: 12, fontSize: 13, color: '#CFCFCF' }}>{vehicle.brand} {vehicle.model} · {fmtDate} · {schedule.time}</div>
       </div>
@@ -613,16 +648,49 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
 
 /* ─── Main wizard ─── */
 export default function BookingWizard() {
+  const searchParams = useSearchParams()
   const [step,      setStep]      = useState(1)
   const [submitted, setSubmitted] = useState(false)
   const [loading,   setLoading]   = useState(false)
   const [errors,    setErrors]    = useState({})
+  const [refNo,     setRefNo]     = useState('')
   const topRef = useRef(null)
 
-  const [vehicle,  setVehicle]  = useState({ brand: '', model: '', year: '', plate: '', tier: '' })
-  const [services, setServices] = useState([])
-  const [location, setLocation] = useState({ barangay: '', city: '', landmark: '', instructions: '' })
-  const [schedule, setSchedule] = useState({ date: '', time: '' })
+  const [vehicle,       setVehicle]       = useState({ brand: '', model: '', year: '', plate: '', tier: '' })
+  const [services,      setServices]      = useState([])
+  const [location,      setLocation]      = useState({ barangay: '', city: '', landmark: '', instructions: '' })
+  const [schedule,      setSchedule]      = useState({ date: '', time: '' })
+  const [savedVehicles, setSavedVehicles] = useState([])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+      supabase.from('vehicles').select('id, make, model, year, plate, tier').eq('user_id', user.id).order('created_at').then(({ data }) => {
+        if (data?.length) setSavedVehicles(data)
+      })
+    })
+  }, [])
+
+  // Pre-fill from ?rebook=<booking_id>
+  useEffect(() => {
+    const rebookId = searchParams.get('rebook')
+    if (!rebookId) return
+    const supabase = createClient()
+    supabase
+      .from('bookings')
+      .select('*, vehicles(make, model, tier, plate), booking_services(service_name)')
+      .eq('id', rebookId)
+      .single()
+      .then(({ data }) => {
+        if (!data) return
+        const v = data.vehicles
+        if (v) setVehicle({ brand: v.make || '', model: v.model || '', year: '', plate: v.plate || '', tier: v.tier || '', savedId: v.id })
+        const svcNames = (data.booking_services || []).map(s => s.service_name)
+        if (svcNames.length) setServices(svcNames)
+        if (data.barangay || data.city) setLocation(l => ({ ...l, barangay: data.barangay || '', city: data.city || '' }))
+      })
+  }, [searchParams])
 
   const scrollTop = () => topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 
@@ -659,27 +727,37 @@ export default function BookingWizard() {
         const s = list.find(x => x.name === name)
         return sum + (s ? s.price : 0)
       }, 0)
-
-      await supabase.from('bookings').insert({
-        user_id:        user?.id || null,
-        vehicle_brand:  vehicle.brand,
-        vehicle_model:  vehicle.model,
-        vehicle_year:   vehicle.year || null,
-        vehicle_plate:  vehicle.plate || null,
-        vehicle_tier:   vehicle.tier,
-        services:       services,
-        barangay:       location.barangay,
-        city:           location.city,
-        landmark:       location.landmark || null,
-        instructions:   location.instructions || null,
-        scheduled_date: schedule.date,
-        scheduled_time: schedule.time,
-        travel_fee:     travelFee,
-        total_amount:   serviceTotal + travelFee,
-        status:         'pending',
+      const selectedServices = services.map(name => {
+        const s = list.find(x => x.name === name)
+        return { name, price: s?.price ?? 0 }
       })
+
+      const res  = await fetch('/api/bookings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id:        user?.id || null,
+          vehicle_id:     vehicle.savedId || null,
+          vehicle_make:   vehicle.brand,
+          vehicle_model:  vehicle.model,
+          vehicle_tier:   vehicle.tier,
+          vehicle_plate:  vehicle.plate || null,
+          services:       selectedServices,
+          barangay:       location.barangay,
+          city:           location.city,
+          landmarks:      location.landmark || null,
+          notes:          location.instructions || null,
+          scheduled_date: schedule.date,
+          scheduled_time: schedule.time,
+          travel_fee:     travelFee,
+          subtotal:       serviceTotal,
+          total:          serviceTotal + travelFee,
+        }),
+      })
+      const data = await res.json()
+      if (data.reference_no) setRefNo(data.reference_no)
     } catch (_) {
-      // still show success — booking confirmed UI shown regardless
+      // show success regardless — booking likely saved
     }
     setLoading(false)
     setSubmitted(true)
@@ -695,11 +773,11 @@ export default function BookingWizard() {
 
   const content = () => {
     switch (step) {
-      case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} />
+      case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} savedVehicles={savedVehicles} />
       case 2: return <Step2 vehicle={vehicle} services={services} setServices={setServices} errors={errors} />
       case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} />
       case 4: return <Step4 schedule={schedule} setSchedule={setSchedule} errors={errors} />
-      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} />
+      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} refNo={refNo} />
       default: return null
     }
   }

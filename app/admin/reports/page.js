@@ -30,7 +30,7 @@ export default function ReportsPage() {
       { data: expenseData },
       { data: upcoming },
     ] = await Promise.all([
-      supabase.from('bookings').select('*').gte('created_at', from).order('created_at'),
+      supabase.from('bookings').select('*, booking_services(service_name, price)').gte('created_at', from).order('created_at'),
       supabase.from('payments').select('amount, created_at').eq('status', 'paid').gte('created_at', from),
       supabase.from('expenses').select('amount').gte('date', from.split('T')[0]),
       supabase.from('bookings').select('total_price').gte('scheduled_date', new Date().toISOString().split('T')[0]).in('status', ['confirmed', 'assigned']),
@@ -48,11 +48,17 @@ export default function ReportsPage() {
     })).slice(-14)
     setByDay(dailyData)
 
-    // Service breakdown from bookings
+    // Service breakdown from booking_services
     const svcMap = {}
     bookings?.forEach(b => {
-      // Counted by reference — will be enhanced when booking_services joined
+      b.booking_services?.forEach(s => {
+        svcMap[s.service_name] = (svcMap[s.service_name] || 0) + 1
+      })
     })
+    const svcData = Object.entries(svcMap)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+    setByService(svcData)
 
     const totalRevenue = payments?.reduce((s, p) => s + p.amount, 0) || 0
     const totalExpenses = expenseData?.reduce((s, e) => s + e.amount, 0) || 0
@@ -139,18 +145,48 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      {/* Daily revenue chart */}
-      <div className="card p-5">
-        <h2 className="font-bold font-display text-thunder-dark mb-4">Daily Revenue (last 14 days)</h2>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={bookingsByDay}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-            <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-            <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `₱${v.toLocaleString()}`} />
-            <Tooltip formatter={v => formatPrice(v)} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
-            <Bar dataKey="revenue" fill="#0694a2" radius={[6, 6, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Daily revenue chart */}
+        <div className="card p-5">
+          <h2 className="font-bold font-display text-thunder-dark mb-4">Daily Revenue (last 14 days)</h2>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={bookingsByDay}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `₱${v.toLocaleString()}`} />
+              <Tooltip formatter={v => formatPrice(v)} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+              <Bar dataKey="revenue" fill="#0694a2" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Service breakdown pie chart */}
+        <div className="card p-5">
+          <h2 className="font-bold font-display text-thunder-dark mb-4">Service Breakdown</h2>
+          {serviceBreakdown.length === 0 ? (
+            <div className="flex items-center justify-center h-[200px] text-[var(--text-muted)] text-sm">No data for this period</div>
+          ) : (
+            <div className="flex gap-4 items-center">
+              <ResponsiveContainer width="50%" height={200}>
+                <PieChart>
+                  <Pie data={serviceBreakdown} dataKey="count" nameKey="name" cx="50%" cy="50%" outerRadius={80} strokeWidth={2}>
+                    {serviceBreakdown.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip formatter={(v, n) => [v, n]} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex-1 space-y-2">
+                {serviceBreakdown.map((s, i) => (
+                  <div key={s.name} className="flex items-center gap-2 text-sm">
+                    <span style={{ background: COLORS[i % COLORS.length] }} className="w-3 h-3 rounded-full flex-shrink-0" />
+                    <span className="text-thunder-dark truncate flex-1">{s.name}</span>
+                    <span className="font-semibold text-[var(--text-muted)]">{s.count}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

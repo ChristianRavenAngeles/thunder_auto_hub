@@ -63,9 +63,10 @@ export default async function AdminDashboard() {
   const admin = createAdminClient()
   const today = new Date().toISOString().split('T')[0]
 
-  // 3 parallel round-trips instead of 7+
-  const [statsResult, bookingsResult, paymentsResult] = await Promise.all([
-    // All 5 counts + revenue in one DB-side function
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
+  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString()
+
+  const [statsResult, bookingsResult, paymentsResult, weeklyPayments, prevWeeklyPayments] = await Promise.all([
     admin.rpc('get_dashboard_stats').single(),
     admin.from('bookings')
       .select('id, reference_no, status, scheduled_date, total_amount, created_at, profiles(full_name), vehicles(make, model)')
@@ -77,7 +78,37 @@ export default async function AdminDashboard() {
       .eq('is_deposit', true)
       .order('created_at', { ascending: false })
       .limit(5),
+    admin.from('payments')
+      .select('amount, created_at')
+      .eq('status', 'paid')
+      .gte('created_at', weekAgo),
+    admin.from('payments')
+      .select('amount, created_at')
+      .eq('status', 'paid')
+      .gte('created_at', twoWeeksAgo)
+      .lt('created_at', weekAgo),
   ])
+
+  // Build daily revenue for this week (last 7 days)
+  const DAY_LABELS = ['SUN','MON','TUE','WED','THU','FRI','SAT']
+  const dailyRevMap = {}
+  ;(weeklyPayments.data || []).forEach(p => {
+    const d = new Date(p.created_at).getDay()
+    dailyRevMap[d] = (dailyRevMap[d] || 0) + p.amount
+  })
+  const thisWeekRevenue = (weeklyPayments.data || []).reduce((s, p) => s + p.amount, 0)
+  const prevWeekRevenue = (prevWeeklyPayments.data || []).reduce((s, p) => s + p.amount, 0)
+  const weeklyChange = prevWeekRevenue > 0 ? Math.round(((thisWeekRevenue - prevWeekRevenue) / prevWeekRevenue) * 100) : null
+
+  // Chart points: 7 days of week ordered Sun..Sat, normalized to 0-120 height
+  const chartDays = [0,1,2,3,4,5,6]
+  const chartValues = chartDays.map(d => dailyRevMap[d] || 0)
+  const maxVal = Math.max(...chartValues, 1)
+  const chartPoints = chartDays.map((d, i) => {
+    const x = i * (560 / 6)
+    const y = 10 + (1 - chartValues[i] / maxVal) * 100
+    return [x, y]
+  })
 
   const s = statsResult.data || {}
   const totalBookings   = s.total_bookings   || 0
@@ -152,8 +183,12 @@ export default async function AdminDashboard() {
                 <div>
                   <div style={{ fontFamily: 'var(--font-cond)', fontSize: 10, letterSpacing: '.16em', color: '#666', marginBottom: 6 }}>WEEKLY REVENUE</div>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', lineHeight: 1 }}>₱28,400</span>
-                    <span style={{ fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700, color: '#22C55E', letterSpacing: '.06em' }}>+18%</span>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', lineHeight: 1 }}>{peso(thisWeekRevenue)}</span>
+                    {weeklyChange !== null && (
+                      <span style={{ fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700, color: weeklyChange >= 0 ? '#22C55E' : '#F87171', letterSpacing: '.06em' }}>
+                        {weeklyChange >= 0 ? '+' : ''}{weeklyChange}%
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, color: '#666', letterSpacing: '.1em' }}>VS LAST WEEK</div>
@@ -165,13 +200,13 @@ export default async function AdminDashboard() {
                     <stop offset="100%" stopColor="#FFD200" stopOpacity="0" />
                   </linearGradient>
                 </defs>
-                <path d="M0,95 L80,78 L160,65 L240,55 L320,45 L400,32 L480,20 L560,12 L560,120 L0,120 Z" fill="url(#rev-grad)" />
-                <polyline points="0,95 80,78 160,65 240,55 320,45 400,32 480,20 560,12" fill="none" stroke="#FFD200" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-                {[[0,95],[80,78],[160,65],[240,55],[320,45],[400,32],[480,20],[560,12]].map(([x,y],i) => (
+                <path d={`M${chartPoints.map(([x,y]) => `${x},${y}`).join(' L')} L560,110 L0,110 Z`} fill="url(#rev-grad)" />
+                <polyline points={chartPoints.map(([x,y]) => `${x},${y}`).join(' ')} fill="none" stroke="#FFD200" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                {chartPoints.map(([x,y],i) => (
                   <circle key={i} cx={x} cy={y} r="3.5" fill="#FFD200" stroke="#1C1C1C" strokeWidth="2" />
                 ))}
-                {['MON','TUE','WED','THU','FRI','SAT','SUN'].map((d,i) => (
-                  <text key={d} x={i*80+40} y="128" textAnchor="middle" fill="#666" fontSize="9" fontFamily="var(--font-cond)" letterSpacing="1">{d}</text>
+                {chartDays.map((d,i) => (
+                  <text key={d} x={i*(560/6)} y="128" textAnchor="middle" fill="#666" fontSize="9" fontFamily="var(--font-cond)" letterSpacing="1">{DAY_LABELS[d]}</text>
                 ))}
               </svg>
             </div>

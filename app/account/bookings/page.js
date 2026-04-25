@@ -1,8 +1,23 @@
 import { createClient } from '@/lib/supabase/server'
+import { revalidatePath } from 'next/cache'
 import Link from 'next/link'
 import { Calendar, ChevronRight, RefreshCw, X, Clock } from 'lucide-react'
 import { formatDate, BOOKING_STATUS_LABELS } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
+
+async function cancelBooking(bookingId) {
+  'use server'
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+  await supabase
+    .from('bookings')
+    .update({ status: 'cancelled' })
+    .eq('id', bookingId)
+    .eq('user_id', user.id)
+    .in('status', ['pending', 'confirmed'])
+  revalidatePath('/account/bookings')
+}
 
 export const metadata = { title: 'My Bookings — Thunder Auto Hub' }
 export const dynamic = 'force-dynamic'
@@ -109,9 +124,11 @@ function BookingCard({ booking: b }) {
           </Link>
         )}
         {isCancellable && (
-          <span className="text-xs text-red-400 sm:ml-auto flex items-center gap-1 cursor-pointer hover:text-red-600">
-            <X className="w-3 h-3" /> Cancel
-          </span>
+          <form action={cancelBooking.bind(null, b.id)} className="sm:ml-auto">
+            <button type="submit" className="text-xs text-red-400 flex items-center gap-1 cursor-pointer hover:text-red-600 bg-transparent border-none p-0">
+              <X className="w-3 h-3" /> Cancel
+            </button>
+          </form>
         )}
       </div>
     </div>
