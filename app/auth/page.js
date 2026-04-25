@@ -284,6 +284,31 @@ function AuthForm() {
   const phoneValid = rawPhone.length === 11 && rawPhone.startsWith('09')
   const maskedPhone = phone.replace(/\s/g, '').replace(/(\d{4})\d{4}(\d{3})/, '$1 •••• $2')
   const staffFormValid = Boolean(email.trim() && password)
+  const panelMeta = role === 'staff'
+    ? {
+        badge: 'STAFF PORTAL',
+        title: 'Secure Team Access',
+        description: 'Operational login for admin, manager, staff, and rider accounts.',
+      }
+    : step === 'otp'
+      ? {
+          badge: 'ONE-TIME PASSCODE',
+          title: 'Almost There',
+          description: 'Confirm your code to continue to your account securely.',
+        }
+      : step === 'success'
+        ? {
+            badge: 'ACCESS GRANTED',
+            title: 'You Are Ready',
+            description: 'Your account is set and your dashboard is waiting.',
+          }
+        : {
+            badge: isNew ? 'NEW CUSTOMER' : 'CUSTOMER LOGIN',
+            title: isNew ? 'Create Your Premium Care Account' : 'Book Faster Every Time',
+            description: isNew
+              ? 'Sign up once and keep your details ready for future bookings and tracking.'
+              : 'Login with your mobile number for quick booking updates, tracking, and account access.',
+          }
 
   useEffect(() => {
     if (countdown <= 0) { clearInterval(timerRef.current); return }
@@ -362,14 +387,70 @@ function AuthForm() {
       flex: 1, display: 'flex', flexDirection: 'column',
       justifyContent: 'center', alignItems: 'center',
       padding: '48px 60px 48px 72px',
-      background: '#0B0B0B', position: 'relative', overflow: 'hidden',
+      background: `
+        radial-gradient(circle at top left, rgba(255,210,0,0.10), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(255,176,0,0.08), transparent 28%),
+        linear-gradient(180deg, #111111 0%, #090909 100%)
+      `,
+      backgroundImage: `
+        repeating-linear-gradient(45deg, transparent, transparent 2px, rgba(255,255,255,.012) 2px, rgba(255,255,255,.012) 4px),
+        repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(255,255,255,.012) 2px, rgba(255,255,255,.012) 4px)
+      `,
+      position: 'relative', overflow: 'hidden',
     }}>
+      <div style={{
+        position: 'absolute', top: 0, left: 72, right: 60, height: 3,
+        background: 'linear-gradient(to right, #FFD200, transparent)',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', top: 0, left: 0, width: 6, height: '100%',
+        background: 'linear-gradient(to bottom, #FFD200 0%, #FFB000 60%, transparent 100%)',
+        opacity: 0.75, pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: -52, right: -12,
+        fontFamily: 'var(--font-display)', fontSize: 210, lineHeight: 1,
+        color: 'rgba(255,210,0,0.035)', userSelect: 'none', pointerEvents: 'none',
+        whiteSpace: 'nowrap', letterSpacing: '-0.03em',
+      }}>ACCESS</div>
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backgroundImage: `
+          linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px)
+        `,
+        backgroundSize: '44px 44px',
+        maskImage: 'linear-gradient(180deg, rgba(0,0,0,.55), transparent 92%)',
+      }} />
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 1 }}>
+        <div style={{
+          position: 'absolute', left: 0, right: 0, height: '28%',
+          background: 'linear-gradient(to bottom, transparent, rgba(255,210,0,0.03), transparent)',
+          animation: 'auth-scan 6s linear infinite',
+        }} />
+      </div>
+
       {/* Radial glow */}
       <div style={{
         position: 'absolute', top: '30%', left: '50%', transform: 'translate(-50%, -50%)',
         width: 500, height: 500, borderRadius: '50%',
         background: 'radial-gradient(circle, rgba(255,210,0,0.06) 0%, transparent 70%)',
         pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', top: 110, right: 86,
+        width: 170, height: 170, borderRadius: '50%',
+        border: '1px solid rgba(255,210,0,0.12)',
+        background: 'radial-gradient(circle, rgba(255,210,0,0.10), transparent 68%)',
+        filter: 'blur(2px)', pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', bottom: 96, left: 58,
+        width: 120, height: 120, borderRadius: 24,
+        background: 'linear-gradient(135deg, rgba(255,210,0,0.08), transparent)',
+        border: '1px solid rgba(255,210,0,0.08)',
+        transform: 'rotate(18deg)', pointerEvents: 'none',
       }} />
 
       {/* Decorative corner accents */}
@@ -389,13 +470,26 @@ function AuthForm() {
       {/* Back to home */}
       <div style={{ position: 'absolute', top: 40, left: 72 }}>
         <Link href="/" style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          color: '#CFCFCF', textDecoration: 'none', fontSize: 13,
+          display: 'inline-flex', alignItems: 'center', gap: 8,
+          color: '#E5E5E5', textDecoration: 'none', fontSize: 12,
           fontFamily: 'var(--font-cond)', letterSpacing: '0.08em', fontWeight: 500,
-          opacity: 0.6, transition: 'opacity 0.2s',
+          padding: '10px 14px', borderRadius: 999,
+          border: '1px solid rgba(255,255,255,0.08)',
+          background: 'rgba(255,255,255,0.03)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
+          opacity: 0.82, transition: 'opacity 0.2s, border-color 0.2s, transform 0.2s',
         }}
-          onMouseEnter={e => e.currentTarget.style.opacity = 1}
-          onMouseLeave={e => e.currentTarget.style.opacity = 0.6}
+          onMouseEnter={e => {
+            e.currentTarget.style.opacity = 1
+            e.currentTarget.style.borderColor = 'rgba(255,210,0,0.35)'
+            e.currentTarget.style.transform = 'translateY(-1px)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.opacity = 0.82
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
+            e.currentTarget.style.transform = ''
+          }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
@@ -404,33 +498,116 @@ function AuthForm() {
         </Link>
       </div>
 
-      <div style={{ maxWidth: 400, width: '100%', position: 'relative', zIndex: 2 }}>
-
-        {/* Role toggle */}
-        {step !== 'success' && (
+      <div style={{ maxWidth: 520, width: '100%', position: 'relative', zIndex: 2 }}>
+        <div style={{
+          marginBottom: 18,
+          display: 'flex',
+          alignItems: 'stretch',
+          gap: 12,
+          animation: 'auth-fadeUp 0.45s ease both',
+        }}>
           <div style={{
-            display: 'flex', background: '#1F1F1F', borderRadius: 12, padding: 4,
-            marginBottom: 40, position: 'relative',
-            animation: 'auth-fadeUp 0.6s ease both',
-            border: '1px solid #2A2A2A',
+            flex: 1,
+            padding: '14px 16px',
+            borderRadius: 18,
+            background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
           }}>
-            <div style={{
-              position: 'absolute', top: 4,
-              left: role === 'customer' ? 4 : 'calc(50% + 2px)',
-              width: 'calc(50% - 6px)', height: 'calc(100% - 8px)',
-              background: '#FFD200', borderRadius: 8,
-              transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
-            }} />
-            {[['customer', 'CUSTOMER'], ['staff', 'STAFF / ADMIN']].map(([val, label]) => (
-              <button key={val} onClick={() => switchRole(val)} style={{
-                flex: 1, padding: '11px 0', background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '0.08em',
-                color: role === val ? '#0B0B0B' : '#CFCFCF',
-                position: 'relative', zIndex: 2, transition: 'color 0.2s',
-              }}>{label}</button>
-            ))}
+            <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, letterSpacing: '0.18em', color: '#FFD200', fontWeight: 700, marginBottom: 6 }}>
+              FAST ACCESS
+            </div>
+            <div style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 600, marginBottom: 2 }}>Book, track, and manage</div>
+            <div style={{ color: '#8F8F8F', fontSize: 12, lineHeight: 1.5 }}>Everything in one sleek account flow.</div>
           </div>
-        )}
+          <div style={{
+            width: 132,
+            padding: '14px 14px 12px',
+            borderRadius: 18,
+            background: 'linear-gradient(180deg, rgba(255,210,0,0.16), rgba(255,210,0,0.06))',
+            border: '1px solid rgba(255,210,0,0.16)',
+            boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
+            backdropFilter: 'blur(12px)',
+          }}>
+            <div style={{ color: '#FFE68A', fontFamily: 'var(--font-cond)', fontSize: 11, letterSpacing: '0.14em', marginBottom: 8 }}>SECURITY</div>
+            <div style={{ color: '#FFFFFF', fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1 }}>OTP</div>
+            <div style={{ color: '#CFCFCF', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>Protected sign-in for every session.</div>
+          </div>
+        </div>
+
+        <div style={{
+          position: 'relative',
+          borderRadius: 28,
+          padding: '28px 26px 24px',
+          background: 'linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.03))',
+          border: '1px solid rgba(255,255,255,0.10)',
+          backdropFilter: 'blur(22px)',
+          boxShadow: '0 32px 80px rgba(0,0,0,0.36)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute', top: -80, right: -20,
+            width: 220, height: 220, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(255,210,0,0.18), transparent 68%)',
+            pointerEvents: 'none',
+          }} />
+          <div style={{
+            position: 'absolute', inset: 1, borderRadius: 27,
+            border: '1px solid rgba(255,255,255,0.04)', pointerEvents: 'none',
+          }} />
+
+          <div style={{ position: 'relative', zIndex: 2, marginBottom: step === 'success' ? 10 : 24 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              borderRadius: 999, padding: '7px 12px',
+              background: 'rgba(255,210,0,0.10)',
+              border: '1px solid rgba(255,210,0,0.18)',
+              color: '#FFD200', fontFamily: 'var(--font-cond)', fontSize: 11,
+              letterSpacing: '0.18em', fontWeight: 700, marginBottom: 14,
+            }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#FFD200', boxShadow: '0 0 14px rgba(255,210,0,0.8)' }} />
+              {panelMeta.badge}
+            </div>
+            <h2 style={{
+              fontFamily: 'var(--font-display)', fontSize: 34, lineHeight: 0.98,
+              letterSpacing: '0.01em', color: '#FFFFFF', marginBottom: 10,
+            }}>
+              {panelMeta.title}
+            </h2>
+            <p style={{ color: '#BDBDBD', fontSize: 14, lineHeight: 1.65, maxWidth: 420 }}>
+              {panelMeta.description}
+            </p>
+          </div>
+
+          {/* Role toggle */}
+          {step !== 'success' && (
+            <div style={{
+              display: 'flex', background: 'rgba(8,8,8,0.66)', borderRadius: 16, padding: 5,
+              marginBottom: 34, position: 'relative',
+              animation: 'auth-fadeUp 0.6s ease both',
+              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+            }}>
+              <div style={{
+                position: 'absolute', top: 5,
+                left: role === 'customer' ? 5 : 'calc(50% + 2px)',
+                width: 'calc(50% - 7px)', height: 'calc(100% - 10px)',
+                background: 'linear-gradient(180deg, #FFE066, #FFD200)',
+                borderRadius: 12,
+                boxShadow: '0 10px 26px rgba(255,210,0,0.24)',
+                transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
+              }} />
+              {[['customer', 'CUSTOMER'], ['staff', 'STAFF / ADMIN']].map(([val, label]) => (
+                <button key={val} onClick={() => switchRole(val)} style={{
+                  flex: 1, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em',
+                  color: role === val ? '#0B0B0B' : '#D0D0D0',
+                  position: 'relative', zIndex: 2, transition: 'color 0.2s',
+                }}>{label}</button>
+              ))}
+            </div>
+          )}
 
         {/* ── Customer: Phone step ── */}
         {role === 'customer' && step === 'phone' && (
@@ -605,8 +782,8 @@ function AuthForm() {
           </div>
         )}
 
-        {/* ── Staff / Admin: email + password ── */}
-        {role === 'staff' && (
+          {/* ── Staff / Admin: email + password ── */}
+          {role === 'staff' && (
           <form onSubmit={handleAdminLogin} style={{ animation: 'auth-fadeUp 0.5s ease both' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 42, lineHeight: 1, marginBottom: 8, color: '#FFFFFF' }}>STAFF LOGIN</h2>
             <p style={{ fontSize: 14, color: '#CFCFCF', marginBottom: 32, lineHeight: 1.5 }}>
@@ -690,8 +867,9 @@ function AuthForm() {
               </div>
             </div>
           </form>
-        )}
+          )}
 
+        </div>
       </div>
     </div>
   )
