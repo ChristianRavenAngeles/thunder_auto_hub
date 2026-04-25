@@ -258,6 +258,7 @@ function AuthForm() {
   const router   = useRouter()
   const params   = useSearchParams()
   const redirect = params.get('redirect') || '/account'
+  const supabase = useMemo(() => createClient(), [])
 
   const [role,     setRole]     = useState('customer')
   const [step,     setStep]     = useState('phone') // phone | otp | success
@@ -282,6 +283,7 @@ function AuthForm() {
   const rawPhone   = phone.replace(/\s/g, '')
   const phoneValid = rawPhone.length === 11 && rawPhone.startsWith('09')
   const maskedPhone = phone.replace(/\s/g, '').replace(/(\d{4})\d{4}(\d{3})/, '$1 •••• $2')
+  const staffFormValid = Boolean(email.trim() && password)
 
   useEffect(() => {
     if (countdown <= 0) { clearInterval(timerRef.current); return }
@@ -328,13 +330,21 @@ function AuthForm() {
 
   async function handleAdminLogin(e) {
     e.preventDefault()
+    if (!email.trim() || !password) return
+
     setLoading(true)
     try {
-      const res  = await fetch('/api/auth/admin-login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+      const res  = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), password }),
+      })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
+      if (!res.ok) throw new Error(data.error || 'Login failed')
+
       toast.success('Welcome back!')
-      router.push(data.role === 'rider' ? '/rider' : '/admin')
+      const destination = data.role === 'rider' ? '/rider' : '/admin'
+      router.push(destination)
       router.refresh()
     } catch (err) {
       toast.error(err.message)
@@ -654,10 +664,10 @@ function AuthForm() {
               </button>
             </div>
 
-            <button type="submit" disabled={loading}
-              style={ctaStyle(!loading)}
-              onMouseEnter={e => { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#FFD200'; e.currentTarget.style.transform = '' }}
+            <button type="submit" disabled={!staffFormValid || loading}
+              style={ctaStyle(staffFormValid && !loading)}
+              onMouseEnter={e => { if (staffFormValid && !loading) { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+              onMouseLeave={e => { e.currentTarget.style.background = staffFormValid && !loading ? '#FFD200' : '#1F1F1F'; e.currentTarget.style.transform = '' }}
             >
               {loading
                 ? <div style={{ width: 22, height: 22, border: '3px solid rgba(0,0,0,0.3)', borderTopColor: '#0B0B0B', borderRadius: '50%', animation: 'auth-spin 0.7s linear infinite' }} />
