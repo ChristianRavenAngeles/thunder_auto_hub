@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
 import { normalizePhone } from '@/lib/sms'
+import { toSessionCookieOptions } from '@/lib/supabase/cookies'
 
 export async function POST(request) {
   try {
@@ -73,16 +73,16 @@ export async function POST(request) {
     if (signInErr) throw signInErr
 
     const response = NextResponse.json({ ok: true, user_id: userId })
-    response.cookies.set('sb-access-token', signInData.session.access_token, {
+    response.cookies.set('sb-access-token', signInData.session.access_token, toSessionCookieOptions({
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', maxAge: 60 * 60 * 24 * 7,
+      sameSite: 'lax',
       path: '/',
-    })
-    response.cookies.set('sb-refresh-token', signInData.session.refresh_token, {
+    }))
+    response.cookies.set('sb-refresh-token', signInData.session.refresh_token, toSessionCookieOptions({
       httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', maxAge: 60 * 60 * 24 * 30,
+      sameSite: 'lax',
       path: '/',
-    })
+    }))
 
     return response
   } catch (err) {

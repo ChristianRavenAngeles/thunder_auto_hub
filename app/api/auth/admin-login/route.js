@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { cookies } from 'next/headers'
+import { authCookieOptions, toSessionCookieOptions } from '@/lib/supabase/cookies'
 
 export async function POST(request) {
   try {
@@ -17,9 +18,10 @@ export async function POST(request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       {
+        cookieOptions: authCookieOptions,
         cookies: {
           getAll:  ()                   => cookieStore.getAll(),
-          setAll:  (cookiesToSet)       => cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options)),
+          setAll:  (cookiesToSet)       => cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, toSessionCookieOptions(options))),
         },
       }
     )
@@ -43,7 +45,7 @@ export async function POST(request) {
     // Patch the response body with the role
     const body = NextResponse.json({ ok: true, role: profile.role })
     // Copy cookies from the auth response onto the body response
-    response.cookies.getAll().forEach(c => body.cookies.set(c.name, c.value, c))
+    response.cookies.getAll().forEach(c => body.cookies.set(c.name, c.value, toSessionCookieOptions(c)))
     return body
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 })
