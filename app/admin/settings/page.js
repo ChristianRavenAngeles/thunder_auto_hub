@@ -50,7 +50,7 @@ export default function SettingsPage() {
 
       {/* Maintenance mode */}
       <div className={`card p-5 ${maintenance ? 'border-red-200 bg-red-50' : ''}`}>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-thunder-dark flex items-center gap-2">
               <AlertCircle className={`w-4 h-4 ${maintenance ? 'text-red-500' : 'text-[var(--text-muted)]'}`} />
@@ -74,7 +74,7 @@ export default function SettingsPage() {
       {/* Business hours */}
       <div className="card p-5">
         <h2 className="font-bold text-thunder-dark mb-3">Business Hours</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Opening Time</label>
             <input type="time" className="input" defaultValue={settings.business_hours_start || '08:00'}
@@ -91,7 +91,7 @@ export default function SettingsPage() {
       {/* Deposit amount */}
       <div className="card p-5">
         <h2 className="font-bold text-thunder-dark mb-3">Deposit & Loyalty</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="label">Reservation Deposit (₱)</label>
             <input type="number" className="input" defaultValue={settings.deposit_amount || 100}

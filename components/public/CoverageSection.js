@@ -58,15 +58,15 @@ export default function CoverageSection() {
   }
 
   return (
-    <section id="coverage" style={{ padding: '100px 0', background: '#1A1A1A' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section id="coverage" style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#1A1A1A' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Service Area</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
             Naka-Service Ba<br />ang Inyong Lugar?
           </h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 560, margin: '0 auto' }}>
@@ -74,11 +74,11 @@ export default function CoverageSection() {
           </p>
         </div>
 
-        <div style={{ maxWidth: 680, margin: '0 auto', background: '#0B0B0B', border: '1px solid #3A3A3A', borderRadius: 20, padding: 32, marginBottom: 48 }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', background: '#0B0B0B', border: '1px solid #3A3A3A', borderRadius: 20, padding: 'clamp(18px, 4vw, 32px)', marginBottom: 48 }}>
           <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, letterSpacing: '0.1em', marginBottom: 20, color: '#FFFFFF' }}>Check Your Location</div>
 
-          <div style={{ display: 'flex', gap: 12, marginBottom: result ? 20 : 0 }}>
-            <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: result ? 20 : 0, flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 240px', position: 'relative' }}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#888" strokeWidth="2" strokeLinecap="round" style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }}>
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
@@ -99,7 +99,7 @@ export default function CoverageSection() {
               display: 'inline-flex', alignItems: 'center', background: '#FFD200', color: '#0B0B0B',
               border: 'none', cursor: 'pointer', fontFamily: 'var(--font-display)', fontSize: 16,
               letterSpacing: '0.1em', padding: '0 28px', borderRadius: 10, flexShrink: 0,
-              transition: 'background 0.15s',
+              transition: 'background 0.15s', minHeight: 52,
             }}
               onMouseEnter={e => e.currentTarget.style.background = '#FFC800'}
               onMouseLeave={e => e.currentTarget.style.background = '#FFD200'}
@@ -137,7 +137,7 @@ export default function CoverageSection() {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFD200" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
               COVERED CITIES & MUNICIPALITIES
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
               {SERVICE_AREAS.map(a => (
                 <div key={a.city}
                   onClick={() => { setQuery(a.city); check() }}

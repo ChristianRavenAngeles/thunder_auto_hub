@@ -41,7 +41,7 @@ export default async function PaymentsPage({ searchParams }) {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="card p-4">
           <p className="text-sm text-[var(--text-muted)] mb-1">Total Collected</p>
           <p className="text-2xl font-bold text-green-600">{formatPrice(totalPaid)}</p>
@@ -57,7 +57,7 @@ export default async function PaymentsPage({ searchParams }) {
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {['all','pending','paid','partial','refunded'].map(s => (
           <a key={s} href={`?status=${s}`} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === s ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-gray-200'}`}>
             {s === 'all' ? 'All' : PAYMENT_STATUS_LABELS[s]?.label || s}

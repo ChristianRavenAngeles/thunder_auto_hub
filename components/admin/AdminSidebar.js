@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +11,7 @@ const NAV_GROUPS = [
     label: 'OPERATIONS',
     items: [
       { href: '/admin',           icon: 'home',      label: 'Dashboard'      },
-      { href: '/admin/bookings',  icon: 'bookings',  label: 'Bookings',  badge: null },
+      { href: '/admin/bookings',  icon: 'bookings',  label: 'Bookings',  badge: 3 },
       { href: '/admin/calendar',  icon: 'calendar',  label: 'Calendar'       },
       { href: '/admin/payments',  icon: 'payments',  label: 'Payments'       },
     ],
@@ -32,7 +33,7 @@ const NAV_GROUPS = [
   {
     label: 'COMMUNICATION',
     items: [
-      { href: '/admin/messages',  icon: 'messages',  label: 'Messages'       },
+      { href: '/admin/messages',  icon: 'messages',  label: 'Messages',  badge: 2 },
       { href: '/admin/broadcast', icon: 'broadcast', label: 'Broadcast'      },
     ],
   },
@@ -84,6 +85,7 @@ export default function AdminSidebar({ profile }) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   async function signOut() {
     await supabase.auth.signOut()
@@ -95,7 +97,7 @@ export default function AdminSidebar({ profile }) {
     return pathname.startsWith(href)
   }
 
-  return (
+  const sidebar = (
     <aside style={{
       width: 220, background: '#141414', borderRight: '1px solid #2A2A2A',
       display: 'flex', flexDirection: 'column', height: '100vh',
@@ -153,6 +155,7 @@ export default function AdminSidebar({ profile }) {
                   textDecoration: 'none', whiteSpace: 'nowrap',
                   borderLeft: active ? '3px solid #FFD200' : '3px solid transparent',
                 }}
+                  onClick={() => setMobileOpen(false)}
                   onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#2A2A2A'; e.currentTarget.style.color = '#FFFFFF' } }}
                   onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#CFCFCF' } }}
                 >
@@ -179,6 +182,7 @@ export default function AdminSidebar({ profile }) {
           textDecoration: 'none', fontFamily: 'var(--font-cond)', fontSize: 12,
           letterSpacing: '.06em', padding: '6px 2px', transition: 'color .15s',
         }}
+          onClick={() => setMobileOpen(false)}
           onMouseEnter={e => e.currentTarget.style.color = '#CFCFCF'}
           onMouseLeave={e => e.currentTarget.style.color = '#666'}
         >
@@ -198,5 +202,44 @@ export default function AdminSidebar({ profile }) {
         </button>
       </div>
     </aside>
+  )
+
+  return (
+    <>
+      <button
+        type="button"
+        aria-label="Open admin navigation"
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen(true)}
+        className="mobile-menu-btn"
+        style={{
+          position: 'fixed', top: 14, left: 14, zIndex: 60,
+          width: 40, height: 40, borderRadius: 9, background: '#141414',
+          border: '1px solid #2A2A2A', color: '#CFCFCF', cursor: 'pointer',
+          alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </button>
+
+      <div className="desktop-sidebar">
+        {sidebar}
+      </div>
+
+      {mobileOpen && (
+        <>
+          <div
+            className="mobile-sidebar-backdrop"
+            onClick={() => setMobileOpen(false)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.62)', zIndex: 50 }}
+          />
+          <div className="mobile-sidebar-panel" style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 55 }}>
+            {sidebar}
+          </div>
+        </>
+      )}
+    </>
   )
 }

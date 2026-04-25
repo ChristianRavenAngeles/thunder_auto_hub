@@ -101,6 +101,7 @@ export default function CustomerSidebar({ profile }) {
               textDecoration: 'none', whiteSpace: 'nowrap',
               borderLeft: active ? '3px solid #FFD200' : '3px solid transparent',
             }}
+              onClick={() => setMobileOpen(false)}
               onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#2A2A2A'; e.currentTarget.style.color = '#FFFFFF' } }}
               onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#CFCFCF' } }}
             >
@@ -118,7 +119,7 @@ export default function CustomerSidebar({ profile }) {
             borderRadius: 10, textDecoration: 'none',
             fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13,
             letterSpacing: '.06em', color: '#FFD200',
-          }}>
+          }} onClick={() => setMobileOpen(false)}>
             <NavIcon name="book" size={14} color="#FFD200" />
             Book New Service
           </Link>
@@ -131,7 +132,7 @@ export default function CustomerSidebar({ profile }) {
           display: 'flex', alignItems: 'center', gap: 8, color: '#666',
           textDecoration: 'none', fontFamily: 'var(--font-cond)', fontSize: 12,
           letterSpacing: '.06em', padding: '6px 2px',
-        }}>
+        }} onClick={() => setMobileOpen(false)}>
           ← Back to Site
         </Link>
         <button onClick={signOut} style={{
@@ -153,10 +154,13 @@ export default function CustomerSidebar({ profile }) {
     <>
       {/* Mobile toggle button */}
       <button
+        type="button"
+        aria-label="Open account navigation"
+        aria-expanded={mobileOpen}
         onClick={() => setMobileOpen(true)}
         style={{
-          display: 'none', position: 'fixed', top: 16, left: 16, zIndex: 40,
-          width: 36, height: 36, borderRadius: 8, background: '#141414',
+          position: 'fixed', top: 14, left: 14, zIndex: 60,
+          width: 40, height: 40, borderRadius: 9, background: '#141414',
           border: '1px solid #2A2A2A', color: '#CFCFCF', cursor: 'pointer',
           alignItems: 'center', justifyContent: 'center',
         }}
@@ -166,15 +170,15 @@ export default function CustomerSidebar({ profile }) {
       </button>
 
       {/* Desktop sidebar */}
-      <div style={{ display: 'block' }} className="desktop-sidebar">
+      <div className="desktop-sidebar">
         {sidebar}
       </div>
 
       {/* Mobile overlay */}
       {mobileOpen && (
         <>
-          <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 30 }} />
-          <div style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 40 }}>
+          <div className="mobile-sidebar-backdrop" onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.6)', zIndex: 50 }} />
+          <div className="mobile-sidebar-panel" style={{ position: 'fixed', left: 0, top: 0, bottom: 0, zIndex: 55 }}>
             {sidebar}
           </div>
         </>

@@ -111,8 +111,8 @@ function StepBar({ step, onGoTo }) {
         const done   = step > s.id
         const active = step === s.id
         return (
-          <div key={s.id} style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+          <div key={s.id} style={{ display: 'flex', alignItems: 'center', flex: i < STEPS.length - 1 ? '1 1 0' : '0 0 auto' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <button
                 onClick={() => done && onGoTo(s.id)}
                 disabled={!done}
@@ -125,7 +125,7 @@ function StepBar({ step, onGoTo }) {
                   fontFamily: 'var(--font-cond)', fontWeight: 700, transition: 'all .3s',
                   boxShadow: active ? '0 0 24px rgba(255,210,0,.3)' : 'none',
                   cursor: done ? 'pointer' : 'default',
-                  padding: 0,
+                  padding: 0, flexShrink: 0,
                 }}>
                 {done
                   ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0B0B" strokeWidth="3" strokeLinecap="round"><path d="M20 6L9 17l-5-5" /></svg>
@@ -141,7 +141,7 @@ function StepBar({ step, onGoTo }) {
               >{s.label.toUpperCase()}</span>
             </div>
             {i < STEPS.length - 1 && (
-              <div style={{ width: 36, height: 2, background: done ? '#FFD200' : '#3A3A3A', marginBottom: 22, transition: 'background .3s', flexShrink: 0 }} />
+              <div style={{ flex: 1, height: 2, background: done ? '#FFD200' : '#3A3A3A', marginBottom: 22, transition: 'background .3s', minWidth: 16 }} />
             )}
           </div>
         )
@@ -180,7 +180,7 @@ function Step1({ vehicle, setVehicle, errors }) {
           { key: 'year',  label: 'Year',             placeholder: '2020', maxLength: 4 },
           { key: 'plate', label: 'Plate Number',     placeholder: 'ABC 1234' },
         ].map(f => (
-          <div key={f.key} style={{ flex: '0 0 calc(50% - 8px)' }}>
+          <div key={f.key} style={{ flex: '1 1 240px' }}>
             <FieldLabel required={f.required}>{f.label}</FieldLabel>
             <input
               style={inputStyle(errors[f.key])}
@@ -199,7 +199,7 @@ function Step1({ vehicle, setVehicle, errors }) {
       <div>
         <FieldLabel required>Vehicle Size</FieldLabel>
         {errors.tier && <div style={{ fontSize: 12, color: '#F87171', marginBottom: 8, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors.tier}</div>}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
           {TIERS.map(t => (
             <button key={t.id} onClick={() => setVehicle({ ...vehicle, tier: t.id })} type="button" style={{
               padding: '14px 12px', borderRadius: 10,
@@ -394,7 +394,7 @@ function Step3({ location, setLocation, errors, vehicle, services }) {
       {!fee && location.city && (
         <div style={{ padding: '16px 20px', background: 'rgba(248,113,113,.08)', border: '1px solid rgba(248,113,113,.25)', borderRadius: 12 }}>
           <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#F87171' }}>LOCATION NOT IN SERVICE AREA</div>
-          <div style={{ fontSize: 13, color: '#CFCFCF', marginTop: 4 }}>Pasensya na, hindi pa namin ina-abot ang "{location.city}". Service area namin ay 25km mula Arayat.</div>
+          <div style={{ fontSize: 13, color: '#CFCFCF', marginTop: 4 }}>Pasensya na, hindi pa namin ina-abot ang &quot;{location.city}&quot;. Service area namin ay 25km mula Arayat.</div>
         </div>
       )}
     </div>
@@ -580,7 +580,7 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
           </div>
         </div>
         {/* Location + Schedule */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16 }}>
           <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
             <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 8 }}>LOKASYON</div>
             <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 14, color: '#FFFFFF' }}>{location.barangay}, {location.city}</div>
@@ -716,13 +716,13 @@ export default function BookingWizard() {
         minHeight: '100vh',
         background: '#0B0B0B',
         backgroundImage: 'repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px),repeating-linear-gradient(-45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px)',
-        padding: '100px 0 80px',
+        padding: 'clamp(96px, 16vw, 100px) 0 80px',
         position: 'relative',
       }}>
         {/* Yellow right accent bar */}
         <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 4, background: 'linear-gradient(to bottom,#FFD200,rgba(255,178,0,.4),transparent)', pointerEvents: 'none', zIndex: 50 }} />
 
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ width: '100%', maxWidth: 720, margin: '0 auto', padding: '0 clamp(14px, 4vw, 24px)' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 48 }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,210,0,.3)', borderRadius: 40, padding: '5px 16px', marginBottom: 20 }}>
@@ -737,11 +737,11 @@ export default function BookingWizard() {
           <StepBar step={step} onGoTo={(s) => { setStep(s); setErrors({}) }} />
 
           {/* Card */}
-          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 20, padding: '40px 44px', boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
+          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 20, padding: 'clamp(22px, 5vw, 40px) clamp(16px, 5vw, 44px)', boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
             {content()}
 
             {!submitted && step < 5 && (
-              <div style={{ display: 'flex', justifyContent: step > 1 ? 'space-between' : 'flex-end', marginTop: 36, paddingTop: 28, borderTop: '1px solid #3A3A3A' }}>
+              <div style={{ display: 'flex', justifyContent: step > 1 ? 'space-between' : 'flex-end', marginTop: 36, paddingTop: 28, borderTop: '1px solid #3A3A3A', gap: 12, flexWrap: 'wrap' }}>
                 {step > 1 && (
                   <button onClick={back} style={{
                     display: 'inline-flex', alignItems: 'center', gap: 8,

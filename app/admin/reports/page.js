@@ -97,9 +97,9 @@ export default function ReportsPage() {
 
   return (
     <div className="space-y-6 max-w-6xl">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-2xl font-bold font-display text-thunder-dark">Reports & Analytics</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {['7', '30', '90'].map(d => (
             <button key={d} onClick={() => setRange(d)}
               className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${range === d ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-brand-50'}`}>

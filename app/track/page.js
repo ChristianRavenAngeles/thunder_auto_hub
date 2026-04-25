@@ -80,7 +80,7 @@ function TrackingResult({ booking }) {
       </div>
 
       {/* Vehicle + schedule */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: 16, marginBottom: 24 }}>
         <div style={{ background: '#222', border: '1px solid #3A3A3A', borderRadius: 12, padding: '18px 20px' }}>
           <div style={{ fontFamily: 'var(--font-cond)', fontSize: 10, letterSpacing: '.16em', color: '#777', marginBottom: 6 }}>SASAKYAN</div>
           <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, color: '#FFFFFF' }}>{booking.vehicle}</div>
@@ -222,13 +222,13 @@ export default function TrackPage() {
       <PublicNav />
 
       <main style={{
-        minHeight: '100vh', background: '#0B0B0B',
+        minHeight: '100vh', minHeight: '100dvh', background: '#0B0B0B',
         backgroundImage: 'repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px),repeating-linear-gradient(-45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px)',
-        padding: '100px 0 80px', position: 'relative',
+        padding: 'clamp(96px, 16vw, 100px) 0 80px', position: 'relative',
       }}>
         <div style={{ position: 'fixed', right: 0, top: 0, bottom: 0, width: 4, background: 'linear-gradient(to bottom,#FFD200,rgba(255,178,0,.4),transparent)', pointerEvents: 'none', zIndex: 50 }} />
 
-        <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ width: '100%', maxWidth: 680, margin: '0 auto', padding: '0 clamp(14px, 4vw, 24px)' }}>
           {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 52, animation: 'track-fadeUp .5s ease both' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, border: '1px solid rgba(255,210,0,.3)', borderRadius: 40, padding: '5px 16px', marginBottom: 20 }}>
@@ -244,12 +244,12 @@ export default function TrackPage() {
           </div>
 
           {/* Search card */}
-          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 20, padding: '36px 40px', marginBottom: 24, boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
+          <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 20, padding: 'clamp(22px, 5vw, 36px) clamp(16px, 5vw, 40px)', marginBottom: 24, boxShadow: '0 24px 80px rgba(0,0,0,.5)' }}>
             <label style={{ fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700, letterSpacing: '.14em', color: '#CFCFCF', display: 'block', marginBottom: 8 }}>
               REFERENCE NUMBER
             </label>
-            <div style={{ display: 'flex', gap: 12, marginBottom: result || notFound ? 24 : 0 }}>
-              <div style={{ flex: 1 }}>
+            <div style={{ display: 'flex', gap: 12, marginBottom: result || notFound ? 24 : 0, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 240px' }}>
                 <input
                   type="text"
                   value={ref}
@@ -276,7 +276,7 @@ export default function TrackPage() {
                   border: 'none', cursor: ref.trim() ? 'pointer' : 'not-allowed',
                   fontFamily: 'var(--font-display)', fontSize: 16, letterSpacing: '.1em',
                   padding: '0 28px', borderRadius: 10, flexShrink: 0,
-                  transition: 'background .15s', opacity: ref.trim() ? 1 : .5,
+                  transition: 'background .15s', opacity: ref.trim() ? 1 : .5, minHeight: 54,
                 }}
                 onMouseEnter={e => { if (ref.trim()) e.currentTarget.style.background = '#FFC800' }}
                 onMouseLeave={e => { if (ref.trim()) e.currentTarget.style.background = '#FFD200' }}

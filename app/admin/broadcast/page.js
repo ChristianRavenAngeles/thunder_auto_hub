@@ -75,7 +75,7 @@ export default function BroadcastPage() {
               />
               <p className="text-xs text-[var(--text-muted)] mt-1">{form.body.length} characters</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">Channel</label>
                 <select className="input" value={form.channel} onChange={e => setForm(f => ({ ...f, channel: e.target.value }))}>
@@ -113,14 +113,14 @@ export default function BroadcastPage() {
             <div className="space-y-3 max-h-[400px] overflow-y-auto">
               {broadcasts.map(b => (
                 <div key={b.id} className="p-3 rounded-xl bg-[var(--bg-2)] border border-[var(--border)]">
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                     <p className="font-semibold text-thunder-dark text-sm">{b.title}</p>
                     <span className={`badge flex-shrink-0 ${b.status === 'sent' ? 'badge-green' : b.status === 'sending' ? 'badge-gold' : 'badge-gray'}`}>
                       {b.status}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--text-muted)] mt-1 line-clamp-2">{b.body}</p>
-                  <div className="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                  <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
                     <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {b.audience}</span>
                     <span>{b.channel}</span>
                     {b.sent_count > 0 && <span className="flex items-center gap-1"><Check className="w-3 h-3 text-green-500" /> {b.sent_count} sent</span>}

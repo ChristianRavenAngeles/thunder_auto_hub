@@ -43,7 +43,7 @@ export default async function BookingDetailPage({ params }) {
         <ArrowLeft className="w-4 h-4" /> Back to Bookings
       </Link>
 
-      <div className="flex items-start justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold font-display text-thunder-dark font-mono">{booking.ref_number}</h1>
           <p className="text-[var(--text-muted)] text-sm mt-0.5">{formatDate(booking.scheduled_date)} at {booking.scheduled_time}</p>
@@ -112,7 +112,7 @@ export default async function BookingDetailPage({ params }) {
       {(beforePhotos.length > 0 || afterPhotos.length > 0) && (
         <div className="card p-5">
           <h3 className="font-semibold text-thunder-dark mb-4">Photos</h3>
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {beforePhotos.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-[var(--text-muted)] uppercase mb-2">Before</p>
@@ -145,7 +145,7 @@ export default async function BookingDetailPage({ params }) {
       {depositPhotos.length > 0 && (
         <div className="card p-5 mt-5">
           <h3 className="font-semibold text-thunder-dark mb-3">Deposit Screenshot</h3>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             {depositPhotos.map(p => (
               <a key={p.id} href={p.url} target="_blank" rel="noopener noreferrer">
                 <img src={p.url} alt="Deposit" className="rounded-xl h-32 object-cover" />

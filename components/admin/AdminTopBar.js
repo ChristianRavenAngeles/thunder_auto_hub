@@ -33,13 +33,13 @@ export default function AdminTopBar({ profile }) {
   }
 
   return (
-    <header style={{
+    <header className="app-topbar" style={{
       height: 56, background: '#141414', borderBottom: '1px solid #2A2A2A',
       display: 'flex', alignItems: 'center', padding: '0 28px', gap: 16, flexShrink: 0,
       position: 'sticky', top: 0, zIndex: 10,
     }}>
       {/* Search */}
-      <div style={{ position: 'relative', flex: 1, maxWidth: 380 }}>
+      <div className="hide-sm" style={{ position: 'relative', flex: 1, maxWidth: 380 }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round"
           style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
           <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
@@ -56,7 +56,7 @@ export default function AdminTopBar({ profile }) {
         />
       </div>
 
-      <div style={{ flex: 1 }} />
+      <div className="hide-sm" style={{ flex: 1 }} />
 
       {/* Right actions */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -81,7 +81,7 @@ export default function AdminTopBar({ profile }) {
 
           {open && (
             <div style={{
-              position: 'absolute', right: 0, top: 44, width: 300, borderRadius: 12,
+              position: 'absolute', right: 0, top: 44, width: 300, maxWidth: 'calc(100vw - 28px)', borderRadius: 12,
               background: '#1C1C1C', border: '1px solid #2A2A2A', boxShadow: '0 16px 40px rgba(0,0,0,.5)',
               zIndex: 50, overflow: 'hidden',
             }}>
@@ -106,7 +106,7 @@ export default function AdminTopBar({ profile }) {
           )}
         </div>
 
-        <div style={{ width: 1, height: 20, background: '#2A2A2A' }} />
+        <div className="hide-sm" style={{ width: 1, height: 20, background: '#2A2A2A' }} />
 
         {/* User */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -117,10 +117,10 @@ export default function AdminTopBar({ profile }) {
           }}>
             {getInitials(profile?.full_name || 'Admin')}
           </div>
-          <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.06em', color: '#CFCFCF' }}>
+          <span className="hide-sm" style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.06em', color: '#CFCFCF' }}>
             {profile?.full_name || 'Admin'}
           </span>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round">
+          <svg className="hide-sm" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#666" strokeWidth="2" strokeLinecap="round">
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>

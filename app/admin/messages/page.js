@@ -40,10 +40,10 @@ export default function AdminMessagesPage() {
   })
 
   return (
-    <div className="max-w-6xl h-[calc(100vh-8rem)]">
+    <div className="max-w-6xl h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)]">
       <h1 className="text-2xl font-bold font-display text-thunder-dark mb-4">Messages</h1>
-      <div className="flex h-[calc(100%-3rem)] gap-4">
-        <div className="w-80 flex-shrink-0 card overflow-hidden flex flex-col">
+      <div className="flex flex-col md:flex-row h-[calc(100%-3rem)] gap-4 min-h-0">
+        <div className="w-full md:w-80 md:flex-shrink-0 h-52 md:h-auto card overflow-hidden flex flex-col">
           <div className="p-3 border-b border-[var(--border)]">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
@@ -70,7 +70,7 @@ export default function AdminMessagesPage() {
             })}
           </div>
         </div>
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 min-h-0">
           {selected && userId ? (
             <ChatWindow conversationId={selected.id} currentUserId={userId} currentUserName="Thunder Team" />
           ) : (

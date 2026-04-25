@@ -20,8 +20,8 @@ export default function HeroSection() {
     <section
       id="hero"
       style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        justifyContent: 'center', padding: '140px 0 0', position: 'relative', overflow: 'hidden',
+        minHeight: '100vh', minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+        justifyContent: 'center', padding: 'clamp(112px, 18vw, 140px) 0 0', position: 'relative', overflow: 'hidden',
         backgroundColor: '#0B0B0B',
         backgroundImage: `
           repeating-linear-gradient(45deg,transparent,transparent 2px,rgba(255,255,255,.012) 2px,rgba(255,255,255,.012) 4px),
@@ -51,7 +51,7 @@ export default function HeroSection() {
         }} />
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 2, flex: 1 }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)', position: 'relative', zIndex: 2, flex: 1 }}>
         <div style={{ maxWidth: 780, animation: 'hero-fadeUp 0.8s ease both' }}>
           {/* Badge */}
           <div style={{
@@ -95,8 +95,9 @@ export default function HeroSection() {
             <Link href="/book" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: '#FFD200', color: '#0B0B0B', border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-display)', fontSize: 17, letterSpacing: '0.1em',
-              padding: '16px 32px', borderRadius: 10, textDecoration: 'none',
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(14px, 4vw, 17px)', letterSpacing: '0.1em',
+              padding: '16px clamp(18px, 5vw, 32px)', borderRadius: 10, textDecoration: 'none',
+              maxWidth: '100%', justifyContent: 'center', textAlign: 'center', flexWrap: 'wrap',
               transition: 'background 0.15s, transform 0.15s',
             }}
               onMouseEnter={e => { e.currentTarget.style.background = '#FFC800'; e.currentTarget.style.transform = 'translateY(-1px)' }}
@@ -108,8 +109,9 @@ export default function HeroSection() {
             <Link href="/#services" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'transparent', color: '#FFFFFF', border: '1px solid #3A3A3A', cursor: 'pointer',
-              fontFamily: 'var(--font-display)', fontSize: 17, letterSpacing: '0.1em',
-              padding: '16px 32px', borderRadius: 10, textDecoration: 'none',
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(14px, 4vw, 17px)', letterSpacing: '0.1em',
+              padding: '16px clamp(18px, 5vw, 32px)', borderRadius: 10, textDecoration: 'none',
+              maxWidth: '100%', justifyContent: 'center', textAlign: 'center',
               transition: 'border-color 0.15s, transform 0.15s',
             }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = '#CFCFCF'; e.currentTarget.style.transform = 'translateY(-1px)' }}
@@ -131,8 +133,8 @@ export default function HeroSection() {
 
       {/* Stats bar */}
       <div style={{ background: '#1A1A1A', borderTop: '1px solid #3A3A3A' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', padding: '32px 0' }}>
+        <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', padding: '32px 0' }}>
             {STATS.map((s, i) => (
               <div key={i} style={{
                 textAlign: 'center',

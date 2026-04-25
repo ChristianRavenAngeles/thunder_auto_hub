@@ -22,7 +22,7 @@ const NAV_HREFS = ['/#services', '/#pricing', '/#coverage', '/track', '/faq']
 export default function PublicFooter() {
   return (
     <footer style={{ background: '#0B0B0B', borderTop: '1px solid #3A3A3A' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '48px 48px' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '48px clamp(16px, 4vw, 48px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24 }}>
           <Logo />
 

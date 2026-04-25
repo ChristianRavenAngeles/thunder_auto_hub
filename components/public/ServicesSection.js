@@ -48,15 +48,15 @@ const CategoryHeader = ({ icon, label, iconBg, iconColor }) => (
 
 export default function ServicesSection() {
   return (
-    <section id="services" style={{ padding: '100px 0', background: '#0B0B0B' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section id="services" style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#0B0B0B' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Our Services</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Everything Your Car Needs</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Everything Your Car Needs</h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 560, margin: '0 auto 56px' }}>
             Mula basic wash hanggang full ceramic coating — lahat ng kailangan ng inyong sasakyan, nandito. Home-service sa loob ng 25km mula Arayat.
           </p>
@@ -68,7 +68,7 @@ export default function ServicesSection() {
           iconBg="rgba(255,210,0,.12)" iconColor="#FFD200"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD200" strokeWidth="1.8" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>}
         />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20, marginBottom: 48 }}>
           {WASH.map(s => (
             <div key={s.name} style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 16, padding: 28, position: 'relative', transition: 'border-color .2s, transform .2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,210,0,.3)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
@@ -101,7 +101,7 @@ export default function ServicesSection() {
           iconBg="rgba(167,139,250,.12)" iconColor="#A78BFA"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>}
         />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16, marginBottom: 48 }}>
           {DETAILING.map(s => (
             <div key={s.name} style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 16, padding: 28, transition: 'border-color .2s, transform .2s' }}
               onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,210,0,.3)'; e.currentTarget.style.transform = 'translateY(-2px)' }}
@@ -119,7 +119,7 @@ export default function ServicesSection() {
           iconBg="rgba(34,197,94,.12)" iconColor="#22C55E"
           icon={<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="1.8" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>}
         />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 20, marginBottom: 48 }}>
           {COATING.map(s => (
             <div key={s.name} style={{
               background: 'linear-gradient(135deg, #1A1A1A, rgba(255,210,0,.04))',

@@ -11,15 +11,15 @@ const FEATURES = [
 
 export default function WhyUsSection() {
   return (
-    <section id="why-thunder" style={{ padding: '100px 0', background: '#1A1A1A' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section id="why-thunder" style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#1A1A1A' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Why Thunder</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
             Bakit Piliin ang<br />Thunder Auto Hub?
           </h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 560, margin: '0 auto' }}>
@@ -27,7 +27,7 @@ export default function WhyUsSection() {
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 20 }}>
           {FEATURES.map((f, i) => (
             <div key={i} style={{
               background: '#0B0B0B', border: '1px solid #3A3A3A', borderRadius: 16, padding: 28,

@@ -31,7 +31,7 @@ export default async function MembershipPage() {
 
       {/* Loyalty Points */}
       <div className="card p-5 bg-gradient-to-br from-brand-500 to-brand-700 text-[var(--text)] mb-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <p className="text-[var(--text-2)] text-sm">Thunder Points</p>
             <p className="text-4xl font-bold font-display mt-1">{points.toLocaleString()}</p>
@@ -49,7 +49,7 @@ export default async function MembershipPage() {
       {/* Active Membership */}
       {membership ? (
         <div className="card p-5 border-brand-200 mb-6">
-          <div className="flex items-start gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-3">
             <div className="w-10 h-10 bg-thunder-gold/10 rounded-xl flex items-center justify-center">
               <Crown className="w-5 h-5 text-thunder-gold" />
             </div>
@@ -59,7 +59,7 @@ export default async function MembershipPage() {
                 <span className="badge-gold text-xs">Active</span>
               </div>
               <p className="text-sm text-[var(--text-muted)] mb-3">{membership.membership_plans?.description}</p>
-              <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm mb-3">
                 <div className="bg-[var(--bg-2)] rounded-lg p-2">
                   <p className="text-[var(--text-muted)] text-xs">Uses Remaining</p>
                   <p className="font-bold text-thunder-dark">{membership.uses_remaining ?? '—'}</p>

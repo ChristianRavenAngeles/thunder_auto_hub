@@ -98,7 +98,7 @@ export default function AdminCalendarPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: selected ? '1fr 320px' : '1fr', gap: 20, alignItems: 'start' }}>
+      <div className={selected ? 'adm-cal-layout' : 'adm-cal-layout-single'}>
         {/* Calendar grid */}
         <div style={{ background: '#141414', border: '1px solid #2A2A2A', borderRadius: 12, overflow: 'hidden' }}>
           {/* Day headers */}

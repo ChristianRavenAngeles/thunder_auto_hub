@@ -95,21 +95,21 @@ function BACard({ label }) {
 
 export default function GallerySection() {
   return (
-    <section style={{ padding: '100px 0', background: '#0B0B0B' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#0B0B0B' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Results</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Before &amp; After Results</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Before &amp; After Results</h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 560, margin: '0 auto' }}>
             Bawat kotse ay may kwento. Ito ang ilan sa aming mga trabaho.
           </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 40 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 16, marginBottom: 40 }}>
           {ITEMS.map((lbl, i) => <BACard key={i} label={lbl} />)}
         </div>
 

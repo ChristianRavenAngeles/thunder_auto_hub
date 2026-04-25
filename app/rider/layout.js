@@ -13,9 +13,9 @@ export default async function RiderLayout({ children }) {
   if (!['rider', 'admin', 'super_admin'].includes(profile?.role)) redirect('/account')
 
   return (
-    <div className="min-h-screen bg-[var(--bg-2)] flex">
+    <div className="dashboard-shell bg-[var(--bg-2)]">
       <RiderSidebar profile={profile} />
-      <main className="flex-1 p-4 md:p-6">
+      <main className="dashboard-content bg-[var(--bg-2)]">
         {children}
       </main>
     </div>

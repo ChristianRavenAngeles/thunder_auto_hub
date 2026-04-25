@@ -126,7 +126,7 @@ export default function RiderJobsPage() {
               onClick={() => setSelected(selected?.id === job.id ? null : job)}
             >
               <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
                   <span className="font-mono text-xs font-bold text-brand-600">{job.reference_no}</span>
                   <span className={BOOKING_STATUS_LABELS[job.status]?.color}>{BOOKING_STATUS_LABELS[job.status]?.label}</span>
                 </div>
@@ -146,7 +146,7 @@ export default function RiderJobsPage() {
             {selected?.id === job.id && (
               <div className="border-t border-[var(--border)] p-4 space-y-4 bg-[var(--bg-2)]/50">
                 {/* Customer contact */}
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <a href={`tel:${job.profiles?.phone}`} className="flex items-center gap-2 btn-secondary !py-2 !px-3 !text-xs">
                     <Phone className="w-3 h-3" /> Call Customer
                   </a>
@@ -187,7 +187,7 @@ export default function RiderJobsPage() {
                 {['on_the_way', 'in_progress'].includes(job.status) && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-[var(--text-muted)]">Upload Photos</p>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <p className="text-xs text-[var(--text-muted)] mb-1">Before</p>
                         <div {...getBefore()} className="border-2 border-dashed border-[var(--border)] rounded-xl p-3 text-center cursor-pointer hover:border-brand-300">

@@ -51,7 +51,7 @@ export default function PartnerPage() {
               May sarili kang car wash shop? Join our network at mag-offer ng detailing at coating services
               sa inyong customers — gamit ang aming brand, sistema, at expertise.
             </p>
-            <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-md mx-auto">
               {[
                 { icon: Building2, label: 'Expand Services' },
                 { icon: TrendingUp, label: 'More Revenue'   },
@@ -102,7 +102,7 @@ export default function PartnerPage() {
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-3">
                     <h3 className="font-bold font-display text-thunder-dark">Apply to be a Partner</h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="label">Business Name *</label>
                         <input className="input" required value={form.business_name} onChange={e => setForm(f => ({ ...f, business_name: e.target.value }))} />

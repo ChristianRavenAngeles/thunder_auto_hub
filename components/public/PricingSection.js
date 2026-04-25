@@ -41,22 +41,22 @@ export default function PricingSection() {
   const [active, setActive] = useState('M')
 
   return (
-    <section id="pricing" style={{ padding: '100px 0', background: '#0B0B0B' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section id="pricing" style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#0B0B0B' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Pricing</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Transparent, Honest Pricing</h2>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>Transparent, Honest Pricing</h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 560, margin: '0 auto' }}>
             Walang hidden charges. Piliin ang size ng inyong sasakyan para makita ang presyo.
           </p>
         </div>
 
         {/* Tier tabs */}
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
           {TIERS.map(t => (
             <button key={t.id} onClick={() => setActive(t.id)} style={{
               padding: '14px 24px', borderRadius: 10, cursor: 'pointer',
@@ -64,7 +64,7 @@ export default function PricingSection() {
               background: active === t.id ? '#FFD200' : '#1A1A1A',
               color: active === t.id ? '#0B0B0B' : '#CFCFCF',
               fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 15, letterSpacing: '0.06em',
-              transition: 'all .15s', textAlign: 'center',
+              transition: 'all .15s', textAlign: 'center', flex: '1 1 140px', maxWidth: 230,
             }}>
               <div>{t.label}</div>
               <div style={{ fontSize: 11, fontWeight: 400, opacity: 0.7, marginTop: 2 }}>{t.sub}</div>
@@ -82,7 +82,7 @@ export default function PricingSection() {
         <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {SERVICES.map(s => (
             <div key={s.name} style={{
-              display: 'flex', alignItems: 'center', padding: '18px 24px',
+              display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '18px clamp(16px, 4vw, 24px)',
               background: s.highlight ? 'linear-gradient(90deg, rgba(255,210,0,.06), rgba(255,210,0,.02))' : '#1A1A1A',
               border: `1px solid ${s.highlight ? 'rgba(255,210,0,.25)' : '#3A3A3A'}`,
               borderRadius: 12, gap: 16, transition: 'border-color .15s',
@@ -92,7 +92,7 @@ export default function PricingSection() {
                 fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-cond)', letterSpacing: '0.12em',
                 padding: '3px 9px', borderRadius: 40, flexShrink: 0, whiteSpace: 'nowrap',
               }}>{s.cat.toUpperCase()}</span>
-              <span style={{ flex: 1, fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 16, letterSpacing: '0.04em', color: '#FFFFFF' }}>{s.name}</span>
+              <span style={{ flex: '1 1 180px', minWidth: 0, fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 16, letterSpacing: '0.04em', color: '#FFFFFF' }}>{s.name}</span>
               {s.note && <span style={{ fontSize: 12, color: '#888', fontFamily: 'var(--font-cond)', letterSpacing: '0.06em' }}>{s.note}</span>}
               <div style={{ textAlign: 'right', flexShrink: 0 }}>
                 {s.orig && (

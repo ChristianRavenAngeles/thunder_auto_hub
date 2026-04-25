@@ -68,11 +68,21 @@ export default function PublicNav() {
         backdropFilter: scrolled ? 'blur(12px)' : 'none',
         borderBottom: scrolled ? '1px solid #3A3A3A' : '1px solid transparent',
       }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', height: 68, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{
+          maxWidth: 1200,
+          margin: '0 auto',
+          padding: '0 clamp(16px, 4vw, 48px)',
+          height: 68,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          minWidth: 0,
+        }}>
           <Logo />
 
           {/* Desktop links */}
-          <div className="hidden md:flex" style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
+          <div className="hidden md:flex items-center gap-5 lg:gap-8">
             {NAV_LINKS.map(l => (
               <Link key={l.href} href={l.href} style={{
                 fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 14,
@@ -85,7 +95,7 @@ export default function PublicNav() {
           </div>
 
           {/* Desktop CTA */}
-          <div className="hidden md:flex" style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <div className="hidden md:flex items-center gap-3">
             {user ? (
               <Link href="/account" style={{
                 fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em',

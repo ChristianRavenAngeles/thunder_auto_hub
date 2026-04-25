@@ -33,8 +33,8 @@ export default async function AccountDashboard() {
     <div className="space-y-6 max-w-4xl">
       {/* Active booking alert */}
       {activeBooking && (
-        <div className="card p-4 bg-brand-50 border-brand-200 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+        <div className="card p-4 bg-brand-50 border-brand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
               <Clock className="w-5 h-5 text-brand-600" />
             </div>
@@ -48,7 +48,7 @@ export default async function AccountDashboard() {
               </p>
             </div>
           </div>
-          <Link href={`/track/${activeBooking.reference_no}`} className="btn-primary !py-2 !px-4 !text-xs flex-shrink-0">
+          <Link href={`/track/${activeBooking.reference_no}`} className="btn-primary !py-2 !px-4 !text-xs flex-shrink-0 w-full sm:w-auto text-center">
             Track <ArrowRight className="w-3 h-3 inline ml-1" />
           </Link>
         </div>
@@ -97,7 +97,7 @@ export default async function AccountDashboard() {
                       <p className="text-sm font-medium text-thunder-dark truncate">{b.reference_no}</p>
                       <p className="text-xs text-[var(--text-muted)]">{formatDate(b.scheduled_date)} • {b.vehicles ? `${b.vehicles.make} ${b.vehicles.model}` : ''}</p>
                     </div>
-                    <span className={meta?.color + ' flex-shrink-0'}>{meta?.label}</span>
+                    <span className={meta?.color + ' flex-shrink-0 text-xs'}>{meta?.label}</span>
                   </Link>
                 )
               })}

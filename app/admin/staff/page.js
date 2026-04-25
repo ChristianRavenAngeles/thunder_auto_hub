@@ -108,7 +108,7 @@ export default async function StaffPage() {
         <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 11, letterSpacing: '.2em', color: '#666', marginBottom: 12 }}>
           RIDERS ({riders?.length || 0})
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))', gap: 16 }}>
           {(riders || []).map(r => {
             const stats = r.rider_stats?.[0] || {}
             return (
@@ -134,7 +134,7 @@ export default async function StaffPage() {
                 </div>
 
                 {/* Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                <div className="staff-stats-grid">
                   {[
                     { label: 'TOTAL JOBS', value: stats.total_jobs || 0, color: '#FFFFFF' },
                     { label: 'THIS MONTH', value: stats.jobs_this_month || 0, color: '#FFFFFF' },

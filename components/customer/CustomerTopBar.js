@@ -34,20 +34,20 @@ export default function CustomerTopBar({ profile }) {
   }
 
   return (
-    <header style={{
+    <header className="app-topbar" style={{
       height: 56, background: '#141414', borderBottom: '1px solid #2A2A2A',
       display: 'flex', alignItems: 'center', padding: '0 24px', gap: 16, flexShrink: 0,
       position: 'sticky', top: 0, zIndex: 10,
     }}>
       <div style={{ flex: 1 }}>
-        <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, letterSpacing: '.04em', color: '#FFFFFF' }}>
+        <span className="topbar-title" style={{ display: 'block', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, letterSpacing: '.04em', color: '#FFFFFF' }}>
           Kumusta, {profile?.full_name?.split(' ')[0] || 'Customer'}! 👋
         </span>
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Book Now */}
-        <Link href="/book" style={{
+        <Link href="/book" className="hide-sm" style={{
           display: 'flex', alignItems: 'center', gap: 6,
           background: '#FFD200', color: '#0B0B0B', borderRadius: 8,
           padding: '6px 14px', textDecoration: 'none',
@@ -76,7 +76,7 @@ export default function CustomerTopBar({ profile }) {
 
           {open && (
             <div style={{
-              position: 'absolute', right: 0, top: 44, width: 300, borderRadius: 12,
+              position: 'absolute', right: 0, top: 44, width: 300, maxWidth: 'calc(100vw - 28px)', borderRadius: 12,
               background: '#1C1C1C', border: '1px solid #2A2A2A', boxShadow: '0 16px 40px rgba(0,0,0,.5)',
               zIndex: 50, overflow: 'hidden',
             }}>

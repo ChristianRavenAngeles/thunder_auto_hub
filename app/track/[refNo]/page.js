@@ -77,14 +77,14 @@ export default function TrackingPage() {
             <div className="card p-8 text-center">
               <XCircle className="w-12 h-12 text-red-400 mx-auto mb-3" />
               <h2 className="text-xl font-bold font-display text-thunder-dark mb-1">Booking Not Found</h2>
-              <p className="text-[var(--text-muted)] text-sm mb-4">Hindi mahanap ang reference number na "{refNo}".</p>
+              <p className="text-[var(--text-muted)] text-sm mb-4">Hindi mahanap ang reference number na &quot;{refNo}&quot;.</p>
               <Link href="/track" className="btn-primary inline-block">Try Again</Link>
             </div>
           ) : (
             <div className="space-y-5">
               {/* Header */}
               <div className="card p-5">
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-3 gap-3">
                   <div>
                     <p className="text-xs text-[var(--text-muted)] mb-1">Reference Number</p>
                     <p className="text-xl font-bold font-display text-brand-600">{booking?.reference_no}</p>
@@ -98,7 +98,7 @@ export default function TrackingPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-[var(--text-muted)]">Customer</p>
                     <p className="font-medium text-thunder-dark">{booking?.profiles?.full_name || 'Guest'}</p>
@@ -174,7 +174,7 @@ export default function TrackingPage() {
               {photos.length > 0 && (
                 <div className="card p-5">
                   <h3 className="font-bold font-display text-thunder-dark mb-3">Photos</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {photos.map(p => (
                       <div key={p.id}>
                         <p className="text-xs text-[var(--text-muted)] mb-1 capitalize">{p.type}</p>

@@ -30,7 +30,7 @@ export default async function LeadsPage({ searchParams }) {
         </div>
       </div>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-4">
         {['all','new','contacted','converted','lost'].map(s => (
           <a key={s} href={`?status=${s}`} className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === s ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-gray-200'}`}>
             {s === 'all' ? 'All' : LEAD_STATUS_LABELS[s]?.label || s}

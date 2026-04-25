@@ -33,12 +33,12 @@ export default async function AccountBookingsPage() {
 
   return (
     <div className="p-6 max-w-3xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-3">
         <div>
           <h1 className="text-2xl font-bold font-display text-thunder-dark">My Bookings</h1>
           <p className="text-[var(--text-muted)] text-sm mt-0.5">Track and manage your car care appointments.</p>
         </div>
-        <Link href="/book" className="btn-primary flex items-center gap-2">
+        <Link href="/book" className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
           <Calendar className="w-4 h-4" /> Book Now
         </Link>
       </div>
@@ -81,7 +81,7 @@ function BookingCard({ booking: b }) {
 
   return (
     <div className="card p-5">
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
         <div>
           <p className="font-semibold text-thunder-dark">{services}</p>
           <p className="text-sm text-[var(--text-muted)]">{vehicle} · {b.vehicles?.plate_number}</p>
@@ -90,11 +90,11 @@ function BookingCard({ booking: b }) {
           {BOOKING_STATUS_LABELS[b.status]?.label || b.status}
         </span>
       </div>
-      <div className="flex items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
+      <div className="flex flex-wrap items-center gap-4 text-sm text-[var(--text-muted)] mb-4">
         <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatDate(b.scheduled_date)} {b.scheduled_time}</span>
         <span className="font-semibold text-thunder-dark">{formatPrice(b.total_amount)}</span>
       </div>
-      <div className="flex items-center gap-2 pt-3 border-t border-[var(--border)]">
+      <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-[var(--border)]">
         <Link href={`/track/${b.ref_number}`} className="btn-secondary !py-1.5 !px-3 !text-xs flex items-center gap-1">
           Track <ChevronRight className="w-3 h-3" />
         </Link>
@@ -109,7 +109,7 @@ function BookingCard({ booking: b }) {
           </Link>
         )}
         {isCancellable && (
-          <span className="text-xs text-red-400 ml-auto flex items-center gap-1 cursor-pointer hover:text-red-600">
+          <span className="text-xs text-red-400 sm:ml-auto flex items-center gap-1 cursor-pointer hover:text-red-600">
             <X className="w-3 h-3" /> Cancel
           </span>
         )}

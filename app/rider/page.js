@@ -30,7 +30,7 @@ export default async function RiderDashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Jobs Done', value: staff?.jobs_completed || 0, icon: CheckCircle, color: 'text-green-500' },
           { label: "Today's Jobs", value: todayJobs?.length || 0, icon: ClipboardList, color: 'text-brand-500' },
@@ -48,7 +48,7 @@ export default async function RiderDashboard() {
       <div className="card p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold font-display text-thunder-dark flex items-center gap-2">
-            <Clock className="w-4 h-4 text-brand-500" /> Today's Jobs
+            <Clock className="w-4 h-4 text-brand-500" /> Today&apos;s Jobs
           </h2>
           <Link href="/rider/jobs" className="text-xs text-brand-500 hover:underline">All jobs →</Link>
         </div>

@@ -110,7 +110,7 @@ export default async function AdminDashboard() {
       </div>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,1fr)', gap: 14, marginBottom: 24 }}>
+      <div className="adm-stat-grid">
         {stats.map((s, i) => (
           <Link key={i} href={s.href} style={{ textDecoration: 'none' }}>
             <div style={{
@@ -131,10 +131,78 @@ export default async function AdminDashboard() {
         ))}
       </div>
 
+      {/* Revenue chart + Mini calendar */}
+      {(() => {
+        const cal = new Date()
+        const calYear = cal.getFullYear()
+        const calMonth = cal.getMonth()
+        const calToday = cal.getDate()
+        const firstDay = new Date(calYear, calMonth, 1).getDay()
+        const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+        const monthLabel = cal.toLocaleDateString('en-PH', { month: 'long', year: 'numeric' }).toUpperCase()
+        const calCells = []
+        for (let i = 0; i < firstDay; i++) calCells.push(null)
+        for (let d = 1; d <= daysInMonth; d++) calCells.push(d)
+        const CAL_DAYS = ['Su','Mo','Tu','We','Th','Fr','Sa']
+        return (
+          <div className="adm-chart-grid">
+            {/* Revenue chart */}
+            <div style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: 24 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontFamily: 'var(--font-cond)', fontSize: 10, letterSpacing: '.16em', color: '#666', marginBottom: 6 }}>WEEKLY REVENUE</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                    <span style={{ fontFamily: 'var(--font-display)', fontSize: 36, color: '#FFFFFF', lineHeight: 1 }}>₱28,400</span>
+                    <span style={{ fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700, color: '#22C55E', letterSpacing: '.06em' }}>+18%</span>
+                  </div>
+                </div>
+                <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, color: '#666', letterSpacing: '.1em' }}>VS LAST WEEK</div>
+              </div>
+              <svg viewBox="0 0 560 130" style={{ width: '100%', height: 130, display: 'block', overflow: 'visible' }}>
+                <defs>
+                  <linearGradient id="rev-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#FFD200" stopOpacity="0.2" />
+                    <stop offset="100%" stopColor="#FFD200" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0,95 L80,78 L160,65 L240,55 L320,45 L400,32 L480,20 L560,12 L560,120 L0,120 Z" fill="url(#rev-grad)" />
+                <polyline points="0,95 80,78 160,65 240,55 320,45 400,32 480,20 560,12" fill="none" stroke="#FFD200" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                {[[0,95],[80,78],[160,65],[240,55],[320,45],[400,32],[480,20],[560,12]].map(([x,y],i) => (
+                  <circle key={i} cx={x} cy={y} r="3.5" fill="#FFD200" stroke="#1C1C1C" strokeWidth="2" />
+                ))}
+                {['MON','TUE','WED','THU','FRI','SAT','SUN'].map((d,i) => (
+                  <text key={d} x={i*80+40} y="128" textAnchor="middle" fill="#666" fontSize="9" fontFamily="var(--font-cond)" letterSpacing="1">{d}</text>
+                ))}
+              </svg>
+            </div>
+            {/* Mini calendar */}
+            <div className="adm-mini-cal" style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: 20 }}>
+              <div style={{ fontFamily: 'var(--font-cond)', fontSize: 10, letterSpacing: '.16em', color: '#666', marginBottom: 10 }}>MINI CALENDAR</div>
+              <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, color: '#FFFFFF', letterSpacing: '.06em', marginBottom: 12 }}>{monthLabel}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2, marginBottom: 6 }}>
+                {CAL_DAYS.map(d => (
+                  <div key={d} style={{ textAlign: 'center', fontFamily: 'var(--font-cond)', fontSize: 9, fontWeight: 700, color: '#666', padding: '2px 0' }}>{d}</div>
+                ))}
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 2 }}>
+                {calCells.map((d, i) => (
+                  <div key={i} style={{
+                    textAlign: 'center', fontFamily: 'var(--font-cond)', fontSize: 11,
+                    fontWeight: d === calToday ? 700 : 400, padding: '5px 2px', borderRadius: 6,
+                    background: d === calToday ? '#FFD200' : 'transparent',
+                    color: d === calToday ? '#0B0B0B' : d ? '#CFCFCF' : 'transparent',
+                  }}>{d || ''}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Main grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 20, marginBottom: 20 }}>
+      <div className="adm-main-grid">
         {/* Recent bookings */}
-        <div style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: 20 }}>
+        <div style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: 20, overflowX: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
             <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '.08em', color: '#FFFFFF' }}>RECENT BOOKINGS</span>
             <Link href="/admin/bookings" style={{ fontSize: 12, color: '#FFD200', textDecoration: 'none', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.06em' }}>View all →</Link>

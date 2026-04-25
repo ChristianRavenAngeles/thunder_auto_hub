@@ -20,15 +20,15 @@ const PERKS = [
 
 export default function MembershipSection() {
   return (
-    <section style={{ padding: '100px 0', background: '#1A1A1A' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px' }}>
+    <section style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#1A1A1A' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <div style={{
             display: 'inline-block', padding: '4px 14px', border: '1px solid rgba(255,210,0,.35)',
             borderRadius: 40, fontFamily: 'var(--font-cond)', fontSize: 12, fontWeight: 700,
             letterSpacing: '0.18em', color: '#FFD200', marginBottom: 20,
           }}>Membership</div>
-          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 56, lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(36px, 8vw, 56px)', lineHeight: 1, marginBottom: 16, color: '#FFFFFF' }}>
             Thunder Essential<br />Membership
           </h2>
           <p style={{ fontSize: 16, color: '#CFCFCF', lineHeight: 1.6, maxWidth: 520, margin: '0 auto' }}>
@@ -36,7 +36,7 @@ export default function MembershipSection() {
           </p>
         </div>
 
-        <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: 'clamp(28px, 6vw, 48px)', alignItems: 'center' }}>
           {/* Perks */}
           <div>
             <h3 style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 20, letterSpacing: '0.06em', color: '#FFFFFF', marginBottom: 24 }}>KASAMA SA MEMBERSHIP</h3>
@@ -54,7 +54,7 @@ export default function MembershipSection() {
           </div>
 
           {/* Pricing cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 120px), 1fr))', gap: 12 }}>
             {TIERS.map(t => (
               <div key={t.key} style={{
                 background: '#0B0B0B', border: '1px solid #3A3A3A', borderRadius: 16,

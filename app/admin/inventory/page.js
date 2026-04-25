@@ -32,7 +32,7 @@ export default async function InventoryPage({ searchParams }) {
         </div>
       )}
 
-      <div className="flex gap-2 mb-5">
+      <div className="flex flex-wrap gap-2 mb-5">
         {[['supplies','Supplies'],['equipment','Equipment']].map(([key, label]) => (
           <a key={key} href={`?tab=${key}`} className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === key ? 'bg-brand-500 text-[var(--text)]' : 'bg-[var(--bg-2)] text-[var(--text-2)] hover:bg-gray-200'}`}>{label}</a>
         ))}

@@ -37,12 +37,40 @@ const STYLES = `
   @keyframes auth-shimmer   { 0%{background-position:-200% center} 100%{background-position:200% center} }
   @keyframes auth-float     { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
   @keyframes auth-ticker    { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+  @media (max-width: 1024px) {
+    .auth-shell {
+      width: 100% !important;
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      height: auto !important;
+      overflow-x: hidden !important;
+      overflow-y: auto !important;
+    }
+    .auth-left-panel {
+      display: none !important;
+    }
+    .auth-form-panel {
+      min-height: 100vh !important;
+      min-height: 100dvh !important;
+      padding: clamp(88px, 14vw, 120px) clamp(16px, 5vw, 40px) 32px !important;
+      overflow: visible !important;
+    }
+    .auth-back-link {
+      top: 16px !important;
+      left: 16px !important;
+    }
+  }
+  @media (max-width: 520px) {
+    .auth-form-panel {
+      align-items: stretch !important;
+    }
+  }
 `
 
 /* ── Left Panel ──────────────────────────────────────────────────── */
 function LeftPanel() {
   return (
-    <div style={{
+    <div className="auth-left-panel" style={{
       flex: '0 0 52%', position: 'relative', overflow: 'hidden',
       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
       padding: '48px 52px',
@@ -84,11 +112,11 @@ function LeftPanel() {
 
       {/* Car silhouette */}
       <div style={{
-        position: 'absolute', right: 52, bottom: 120,
-        opacity: 0.07, pointerEvents: 'none',
+        position: 'absolute', right: 10, bottom: '18%',
+        opacity: 0.05, pointerEvents: 'none',
         animation: 'auth-fadeIn 2s ease both 0.5s',
       }}>
-        <svg width="380" height="180" viewBox="0 0 380 180" fill="none">
+        <svg width="340" height="160" viewBox="0 0 380 180" fill="none">
           <path d="M20 130 L20 105 L80 60 L180 40 L270 40 L340 70 L370 105 L370 130 Z" fill="white" />
           <path d="M80 105 L110 65 L180 45 L260 45 L310 75 L340 105 Z" fill="white" opacity="0.4" />
           <circle cx="90" cy="130" r="30" fill="#0B0B0B" stroke="white" strokeWidth="6" />
@@ -135,7 +163,7 @@ function LeftPanel() {
         </div>
 
         <h1 style={{
-          fontFamily: 'var(--font-display)', fontSize: 86, lineHeight: 0.92,
+          fontFamily: 'var(--font-display)', fontSize: 'clamp(52px, 6vw, 82px)', lineHeight: 0.92,
           letterSpacing: '-0.01em', marginBottom: 24,
           animation: 'auth-fadeUp 0.8s ease both 0.3s',
         }}>
@@ -211,7 +239,7 @@ function OtpInput({ value, onChange, disabled }) {
   }
 
   return (
-    <div style={{ display: 'flex', gap: 10 }} onPaste={handlePaste}>
+    <div style={{ display: 'flex', gap: 'clamp(6px, 2vw, 10px)', justifyContent: 'space-between' }} onPaste={handlePaste}>
       {[0,1,2,3,4,5].map(i => (
         <input
           key={i}
@@ -224,7 +252,8 @@ function OtpInput({ value, onChange, disabled }) {
           disabled={disabled}
           autoFocus={i === 0}
           style={{
-            width: 52, height: 62,
+            width: 'clamp(38px, 13vw, 52px)', height: 'clamp(48px, 15vw, 62px)',
+            flex: '1 1 0', maxWidth: 52,
             background: digits[i] ? 'rgba(255,210,0,0.1)' : '#1F1F1F',
             border: `2px solid ${digits[i] ? '#FFD200' : '#3A3A3A'}`,
             borderRadius: 10,
@@ -258,9 +287,10 @@ function AuthForm() {
   const router   = useRouter()
   const params   = useSearchParams()
   const redirect = params.get('redirect') || '/account'
+  const roleParam = params.get('role')
   const supabase = useMemo(() => createClient(), [])
 
-  const [role,     setRole]     = useState('customer')
+  const [role,     setRole]     = useState(roleParam === 'staff' ? 'staff' : 'customer')
   const [step,     setStep]     = useState('phone') // phone | otp | success
   const [phone,    setPhone]    = useState('')
   const [otp,      setOtp]      = useState('')
@@ -317,6 +347,10 @@ function AuthForm() {
     }, 1000)
     return () => clearInterval(timerRef.current)
   }, [countdown])
+
+  useEffect(() => {
+    setRole(roleParam === 'staff' ? 'staff' : 'customer')
+  }, [roleParam])
 
   async function handleSendOTP(e) {
     e?.preventDefault()
@@ -379,14 +413,35 @@ function AuthForm() {
   }
 
   function switchRole(val) {
-    setRole(val); setStep('phone'); setPhone(''); setOtp(''); setName(''); setEmail(''); setPassword('')
+    setRole(val)
+    setStep('phone')
+    setPhone('')
+    setOtp('')
+    setName('')
+    setEmail('')
+    setPassword('')
+
+    const nextParams = new URLSearchParams(params.toString())
+    if (val === 'staff') nextParams.set('role', 'staff')
+    else nextParams.delete('role')
+    const nextQuery = nextParams.toString()
+    router.replace(nextQuery ? `/auth?${nextQuery}` : '/auth', { scroll: false })
+  }
+
+  function getRoleHref(val) {
+    const nextParams = new URLSearchParams(params.toString())
+    if (val === 'staff') nextParams.set('role', 'staff')
+    else nextParams.delete('role')
+    const nextQuery = nextParams.toString()
+    return nextQuery ? `/auth?${nextQuery}` : '/auth'
   }
 
   return (
-    <div style={{
+    <div className="auth-form-panel" style={{
       flex: 1, display: 'flex', flexDirection: 'column',
       justifyContent: 'center', alignItems: 'center',
-      padding: '48px 60px 48px 72px',
+      overflowY: 'auto',
+      padding: 'clamp(24px, 6vh, 48px) clamp(24px, 5vw, 60px) clamp(24px, 6vh, 48px) clamp(24px, 5vw, 72px)',
       background: `
         radial-gradient(circle at top left, rgba(255,210,0,0.10), transparent 32%),
         radial-gradient(circle at bottom right, rgba(255,176,0,0.08), transparent 28%),
@@ -468,17 +523,17 @@ function AuthForm() {
       </div>
 
       {/* Back to home */}
-      <div style={{ position: 'absolute', top: 40, left: 72 }}>
+      <div className="auth-back-link" style={{ position: 'absolute', top: 24, left: 24 }}>
         <Link href="/" style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          color: '#E5E5E5', textDecoration: 'none', fontSize: 12,
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          color: '#E5E5E5', textDecoration: 'none', fontSize: 11,
           fontFamily: 'var(--font-cond)', letterSpacing: '0.08em', fontWeight: 500,
-          padding: '10px 14px', borderRadius: 999,
+          padding: '8px 12px', borderRadius: 999,
           border: '1px solid rgba(255,255,255,0.08)',
           background: 'rgba(255,255,255,0.03)',
           backdropFilter: 'blur(12px)',
-          boxShadow: '0 12px 32px rgba(0,0,0,0.22)',
-          opacity: 0.82, transition: 'opacity 0.2s, border-color 0.2s, transform 0.2s',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.22)',
+          opacity: 0.72, transition: 'opacity 0.2s, border-color 0.2s, transform 0.2s',
         }}
           onMouseEnter={e => {
             e.currentTarget.style.opacity = 1
@@ -486,55 +541,19 @@ function AuthForm() {
             e.currentTarget.style.transform = 'translateY(-1px)'
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.opacity = 0.82
+            e.currentTarget.style.opacity = 0.72
             e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'
             e.currentTarget.style.transform = ''
           }}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
             <path d="M19 12H5M12 5l-7 7 7 7" />
           </svg>
-          BACK TO HOME
+          BACK
         </Link>
       </div>
 
       <div style={{ maxWidth: 520, width: '100%', position: 'relative', zIndex: 2 }}>
-        <div style={{
-          marginBottom: 18,
-          display: 'flex',
-          alignItems: 'stretch',
-          gap: 12,
-          animation: 'auth-fadeUp 0.45s ease both',
-        }}>
-          <div style={{
-            flex: 1,
-            padding: '14px 16px',
-            borderRadius: 18,
-            background: 'rgba(255,255,255,0.04)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(12px)',
-            boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
-          }}>
-            <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, letterSpacing: '0.18em', color: '#FFD200', fontWeight: 700, marginBottom: 6 }}>
-              FAST ACCESS
-            </div>
-            <div style={{ color: '#FFFFFF', fontSize: 15, fontWeight: 600, marginBottom: 2 }}>Book, track, and manage</div>
-            <div style={{ color: '#8F8F8F', fontSize: 12, lineHeight: 1.5 }}>Everything in one sleek account flow.</div>
-          </div>
-          <div style={{
-            width: 132,
-            padding: '14px 14px 12px',
-            borderRadius: 18,
-            background: 'linear-gradient(180deg, rgba(255,210,0,0.16), rgba(255,210,0,0.06))',
-            border: '1px solid rgba(255,210,0,0.16)',
-            boxShadow: '0 18px 40px rgba(0,0,0,0.22)',
-            backdropFilter: 'blur(12px)',
-          }}>
-            <div style={{ color: '#FFE68A', fontFamily: 'var(--font-cond)', fontSize: 11, letterSpacing: '0.14em', marginBottom: 8 }}>SECURITY</div>
-            <div style={{ color: '#FFFFFF', fontFamily: 'var(--font-display)', fontSize: 28, lineHeight: 1 }}>OTP</div>
-            <div style={{ color: '#CFCFCF', fontSize: 11, lineHeight: 1.5, marginTop: 4 }}>Protected sign-in for every session.</div>
-          </div>
-        </div>
 
         <div style={{
           position: 'relative',
@@ -583,28 +602,34 @@ function AuthForm() {
           {/* Role toggle */}
           {step !== 'success' && (
             <div style={{
-              display: 'flex', background: 'rgba(8,8,8,0.66)', borderRadius: 16, padding: 5,
-              marginBottom: 34, position: 'relative',
+              display: 'grid', gridTemplateColumns: '1fr 1fr',
+              background: 'rgba(8,8,8,0.66)', borderRadius: 16, padding: 5,
+              marginBottom: 34,
               animation: 'auth-fadeUp 0.6s ease both',
               border: '1px solid rgba(255,255,255,0.08)',
               boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+              gap: 6,
             }}>
-              <div style={{
-                position: 'absolute', top: 5,
-                left: role === 'customer' ? 5 : 'calc(50% + 2px)',
-                width: 'calc(50% - 7px)', height: 'calc(100% - 10px)',
-                background: 'linear-gradient(180deg, #FFE066, #FFD200)',
-                borderRadius: 12,
-                boxShadow: '0 10px 26px rgba(255,210,0,0.24)',
-                transition: 'left 0.3s cubic-bezier(0.4,0,0.2,1)',
-              }} />
               {[['customer', 'CUSTOMER'], ['staff', 'STAFF / ADMIN']].map(([val, label]) => (
-                <button key={val} onClick={() => switchRole(val)} style={{
-                  flex: 1, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer',
+                <Link
+                  key={val}
+                  href={getRoleHref(val)}
+                  aria-pressed={role === val}
+                  onClick={() => switchRole(val)}
+                  style={{
+                  display: 'block',
+                  textAlign: 'center',
+                  textDecoration: 'none',
+                  padding: '12px 0',
+                  background: role === val ? 'linear-gradient(180deg, #FFE066, #FFD200)' : 'transparent',
+                  border: 'none',
+                  borderRadius: 12,
+                  cursor: 'pointer',
                   fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em',
                   color: role === val ? '#0B0B0B' : '#D0D0D0',
-                  position: 'relative', zIndex: 2, transition: 'color 0.2s',
-                }}>{label}</button>
+                  transition: 'background 0.2s, color 0.2s',
+                  boxShadow: role === val ? '0 10px 26px rgba(255,210,0,0.24)' : 'none',
+                }}>{label}</Link>
               ))}
             </div>
           )}
@@ -879,7 +904,7 @@ export default function AuthPage() {
   return (
     <>
       <style>{STYLES}</style>
-      <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#0B0B0B', color: '#FFFFFF', fontFamily: 'var(--font-barlow)' }}>
+      <div className="auth-shell" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', background: '#0B0B0B', color: '#FFFFFF', fontFamily: 'var(--font-barlow)' }}>
         <LeftPanel />
         <Suspense>
           <AuthForm />

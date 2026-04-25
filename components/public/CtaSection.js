@@ -5,7 +5,7 @@ import Link from 'next/link'
 export default function CtaSection() {
   return (
     <section style={{
-      padding: '100px 0', background: '#FFD200', position: 'relative', overflow: 'hidden',
+      padding: 'clamp(64px, 10vw, 100px) 0', background: '#FFD200', position: 'relative', overflow: 'hidden',
     }}>
       <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
         <div style={{ position: 'absolute', top: 0, right: 0, width: 400, height: 400, background: 'rgba(0,0,0,.08)', borderRadius: '50%', filter: 'blur(80px)' }} />
@@ -18,7 +18,7 @@ export default function CtaSection() {
         }}>THUNDER</div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 48px', position: 'relative', zIndex: 2, textAlign: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 1200, margin: '0 auto', padding: '0 clamp(16px, 4vw, 48px)', position: 'relative', zIndex: 2, textAlign: 'center' }}>
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           background: 'rgba(0,0,0,.15)', border: '1px solid rgba(0,0,0,.15)',
@@ -45,8 +45,8 @@ export default function CtaSection() {
           <Link href="/book" style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: '#0B0B0B', color: '#FFFFFF', fontFamily: 'var(--font-display)',
-            fontSize: 18, letterSpacing: '0.1em', padding: '16px 32px', borderRadius: 10,
-            textDecoration: 'none', transition: 'background 0.15s',
+            fontSize: 'clamp(15px, 4vw, 18px)', letterSpacing: '0.1em', padding: '16px clamp(20px, 5vw, 32px)', borderRadius: 10,
+            textDecoration: 'none', transition: 'background 0.15s', justifyContent: 'center', textAlign: 'center',
           }}
             onMouseEnter={e => e.currentTarget.style.background = '#1F1F1F'}
             onMouseLeave={e => e.currentTarget.style.background = '#0B0B0B'}
@@ -58,8 +58,8 @@ export default function CtaSection() {
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: 'rgba(0,0,0,.15)', color: '#0B0B0B', border: '1px solid rgba(0,0,0,.2)',
             fontFamily: 'var(--font-display)', fontSize: 18, letterSpacing: '0.1em',
-            padding: '16px 32px', borderRadius: 10, textDecoration: 'none',
-            transition: 'background 0.15s',
+            padding: '16px clamp(20px, 5vw, 32px)', borderRadius: 10, textDecoration: 'none',
+            transition: 'background 0.15s', justifyContent: 'center', textAlign: 'center',
           }}
             onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,.25)'}
             onMouseLeave={e => e.currentTarget.style.background = 'rgba(0,0,0,.15)'}

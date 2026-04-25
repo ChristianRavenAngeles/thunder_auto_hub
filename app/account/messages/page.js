@@ -44,11 +44,11 @@ export default function CustomerMessagesPage() {
   }
 
   return (
-    <div className="max-w-4xl h-[calc(100vh-8rem)]">
+    <div className="max-w-4xl h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)]">
       <h1 className="text-2xl font-bold font-display text-thunder-dark mb-4">Messages</h1>
-      <div className="flex h-[calc(100%-3rem)] gap-4">
+      <div className="flex flex-col md:flex-row h-[calc(100%-3rem)] gap-4 min-h-0">
         {/* Conversation list */}
-        <div className="w-72 flex-shrink-0 card overflow-hidden flex flex-col">
+        <div className="w-full md:w-72 md:flex-shrink-0 h-48 md:h-auto card overflow-hidden flex flex-col">
           <div className="p-3 border-b border-[var(--border)]">
             <h2 className="font-semibold text-thunder-dark text-sm">Conversations</h2>
           </div>
@@ -83,7 +83,7 @@ export default function CustomerMessagesPage() {
         </div>
 
         {/* Chat window */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 min-h-0">
           {selected && userId ? (
             <ChatWindow
               conversationId={selected.id}
