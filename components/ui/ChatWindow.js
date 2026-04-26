@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { Send, Paperclip, MessageSquare } from 'lucide-react'
+import { Send, FileText, MessageSquare } from 'lucide-react'
 import { timeAgo, getInitials } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 
-export default function ChatWindow({ conversationId, currentUserId, currentUserName }) {
+export default function ChatWindow({ conversationId, currentUserId, currentUserName, enableCannedResponses = true, onRead }) {
   const supabase = createClient()
   const [messages, setMessages] = useState([])
   const [input, setInput]       = useState('')
@@ -17,7 +17,7 @@ export default function ChatWindow({ conversationId, currentUserId, currentUserN
 
   useEffect(() => {
     loadMessages()
-    loadCannedResponses()
+    if (enableCannedResponses) loadCannedResponses()
 
     const channel = supabase.channel(`chat-${conversationId}`)
       .on('postgres_changes', {
@@ -47,14 +47,16 @@ export default function ChatWindow({ conversationId, currentUserId, currentUserN
       .update({ last_read_at: new Date().toISOString() })
       .eq('conversation_id', conversationId)
       .eq('user_id', currentUserId)
+    onRead?.(conversationId)
   }
 
   async function loadCannedResponses() {
+    if (!enableCannedResponses) return
     const { data } = await supabase.from('canned_responses').select('*').order('title')
     setCanned(data || [])
   }
 
-  async function sendMessage(body = input) {
+  async function sendMessage(body = input, isCanned = false) {
     if (!body.trim() || sending) return
     setSending(true)
     setInput('')
@@ -62,6 +64,7 @@ export default function ChatWindow({ conversationId, currentUserId, currentUserN
       conversation_id: conversationId,
       sender_id: currentUserId,
       body: body.trim(),
+      is_canned: isCanned,
     })
     setSending(false)
   }
@@ -113,31 +116,37 @@ export default function ChatWindow({ conversationId, currentUserId, currentUserN
       </div>
 
       {/* Canned responses */}
-      {showCanned && (
+      {enableCannedResponses && showCanned && (
         <div className="border-t border-gray-100 p-2 max-h-32 overflow-y-auto bg-gray-50">
-          <div className="flex flex-wrap gap-1">
-            {cannedResponses.map(c => (
+          {cannedResponses.length === 0 ? (
+            <p className="text-xs text-[var(--text-muted)] px-2 py-1">No canned responses yet.</p>
+          ) : (
+            <div className="flex flex-wrap gap-1">
+              {cannedResponses.map(c => (
               <button
                 key={c.id}
-                onClick={() => { sendMessage(c.body); setShowCanned(false) }}
+                onClick={() => { sendMessage(c.body, true); setShowCanned(false) }}
                 className="text-xs px-2 py-1 bg-[var(--surface)] border border-gray-200 rounded-lg hover:bg-brand-50 hover:border-brand-200 transition-colors"
               >
                 {c.title}
               </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Input */}
       <div className="border-t border-gray-100 p-3 flex gap-2 items-end">
-        <button
-          onClick={() => setShowCanned(!showCanned)}
-          className="p-2 text-[var(--text-muted)] hover:text-brand-500 rounded-xl hover:bg-brand-50 transition-colors flex-shrink-0"
-          title="Canned responses"
-        >
-          <Paperclip className="w-4 h-4" />
-        </button>
+        {enableCannedResponses && (
+          <button
+            onClick={() => setShowCanned(!showCanned)}
+            className="p-2 text-[var(--text-muted)] hover:text-brand-500 rounded-xl hover:bg-brand-50 transition-colors flex-shrink-0"
+            title="Canned responses"
+          >
+            <FileText className="w-4 h-4" />
+          </button>
+        )}
         <textarea
           className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-brand-400 max-h-24"
           placeholder="Type a message…"

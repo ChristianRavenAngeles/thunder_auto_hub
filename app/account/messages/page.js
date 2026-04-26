@@ -3,8 +3,17 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/ui/ChatWindow'
-import { MessageSquare, Plus } from 'lucide-react'
-import { timeAgo, formatDate } from '@/lib/utils'
+import { MessageSquare } from 'lucide-react'
+import { timeAgo } from '@/lib/utils'
+
+function sortedMessages(convo) {
+  return [...(convo.messages || [])].sort((a, z) => new Date(a.created_at) - new Date(z.created_at))
+}
+
+function unreadCount(convo, userId) {
+  const lastRead = convo.last_read_at ? new Date(convo.last_read_at) : new Date(0)
+  return sortedMessages(convo).filter(msg => msg.sender_id !== userId && new Date(msg.created_at) > lastRead).length
+}
 
 export default function CustomerMessagesPage() {
   const supabase = createClient()
@@ -27,20 +36,26 @@ export default function CustomerMessagesPage() {
   async function loadConversations(uid) {
     const { data: participantRows } = await supabase
       .from('conversation_participants')
-      .select('conversation_id')
+      .select('conversation_id, last_read_at')
       .eq('user_id', uid)
 
     if (!participantRows?.length) { setLoading(false); return }
 
     const ids = participantRows.map(p => p.conversation_id)
+    const readMap = participantRows.reduce((acc, row) => ({ ...acc, [row.conversation_id]: row.last_read_at }), {})
     const { data } = await supabase
       .from('conversations')
       .select('*, bookings(reference_no, status), messages(body, created_at, sender_id, profiles(full_name))')
       .in('id', ids)
       .order('created_at', { ascending: false })
 
-    setConversations(data || [])
+    setConversations((data || []).map(convo => ({ ...convo, last_read_at: readMap[convo.id] || null })))
     setLoading(false)
+  }
+
+  function markRead(conversationId) {
+    const stamp = new Date().toISOString()
+    setConversations(prev => prev.map(convo => convo.id === conversationId ? { ...convo, last_read_at: stamp } : convo))
   }
 
   return (
@@ -62,14 +77,18 @@ export default function CustomerMessagesPage() {
                 <p className="text-xs text-[var(--text-muted)] mt-1">Messages will appear here after you book a service.</p>
               </div>
             ) : conversations.map(convo => {
-              const lastMsg = convo.messages?.[convo.messages.length - 1]
+              const lastMsg = sortedMessages(convo).at(-1)
+              const unread = userId ? unreadCount(convo, userId) : 0
               return (
                 <button
                   key={convo.id}
                   onClick={() => setSelected(convo)}
                   className={`w-full p-3 text-left border-b border-[var(--border)] hover:bg-brand-50 transition-colors ${selected?.id === convo.id ? 'bg-brand-50' : ''}`}
                 >
-                  <p className="text-xs font-semibold text-brand-600">{convo.bookings?.reference_no || 'General'}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-semibold text-brand-600">{convo.bookings?.reference_no || 'General'}</p>
+                    {unread > 0 && <span className="badge-red text-[10px]">{unread}</span>}
+                  </div>
                   {lastMsg && (
                     <>
                       <p className="text-xs text-[var(--text-2)] mt-0.5 truncate">{lastMsg.body}</p>
@@ -89,6 +108,8 @@ export default function CustomerMessagesPage() {
               conversationId={selected.id}
               currentUserId={userId}
               currentUserName={userName}
+              enableCannedResponses={false}
+              onRead={markRead}
             />
           ) : (
             <div className="h-full card flex items-center justify-center">
