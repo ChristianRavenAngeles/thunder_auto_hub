@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Calendar, Car, Crown, Star, ArrowRight, Plus, Clock } from 'lucide-react'
+import { Calendar, Car, Crown, Star, ArrowRight, Plus, Clock, RefreshCw, Wrench } from 'lucide-react'
 import { formatDate, BOOKING_STATUS_LABELS } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
 
@@ -15,12 +15,14 @@ export default async function AccountDashboard() {
     { data: membership },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
-    supabase.from('bookings').select('*, booking_services(service_name), vehicles(make, model)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+    supabase.from('bookings').select('*, booking_services(service_name, services(category, slug)), vehicles(make, model)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('vehicles').select('*').eq('user_id', user.id).limit(3),
     supabase.from('memberships').select('*, membership_plans(name)').eq('user_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
   ])
 
   const activeBooking = bookings?.find(b => ['pending', 'confirmed', 'rescheduled', 'in_progress'].includes(b.status))
+  const rebookSuggestions = buildRebookSuggestions(bookings || [])
+  const recentBookings = (bookings || []).slice(0, 5)
 
   const stats = [
     { label: 'Total Bookings',    value: profile?.booking_count || 0,          icon: Calendar, href: '/account/bookings' },
@@ -68,6 +70,24 @@ export default async function AccountDashboard() {
         ))}
       </div>
 
+      {rebookSuggestions.length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold font-display text-thunder-dark">Suggested Next Bookings</h2>
+            <Link href="/account/bookings" className="text-xs text-brand-500 hover:underline">History</Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {rebookSuggestions.map(item => (
+              <Link key={item.title} href={item.href} className="rounded-xl border border-[var(--border)] bg-[var(--bg-2)] p-4 hover:bg-brand-50 transition-colors">
+                <item.icon className="w-5 h-5 text-brand-500 mb-3" />
+                <p className="text-sm font-semibold text-thunder-dark">{item.title}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{item.body}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Recent bookings */}
         <div className="card p-5">
@@ -75,7 +95,7 @@ export default async function AccountDashboard() {
             <h2 className="font-bold font-display text-thunder-dark">Recent Bookings</h2>
             <Link href="/account/bookings" className="text-xs text-brand-500 hover:underline">View all</Link>
           </div>
-          {!bookings?.length ? (
+          {!recentBookings.length ? (
             <div className="text-center py-6">
               <p className="text-[var(--text-muted)] text-sm mb-3">Wala pang bookings.</p>
               <Link href="/book" className="btn-primary !py-2 !px-4 !text-sm inline-flex items-center gap-1">
@@ -84,7 +104,7 @@ export default async function AccountDashboard() {
             </div>
           ) : (
             <div className="space-y-2">
-              {bookings.map(b => {
+              {recentBookings.map(b => {
                 const meta = BOOKING_STATUS_LABELS[b.status]
                 return (
                   <Link key={b.id} href={`/track/${b.reference_no}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--bg-2)] transition-colors">
@@ -159,4 +179,42 @@ export default async function AccountDashboard() {
       </div>
     </div>
   )
+}
+
+function buildRebookSuggestions(bookings) {
+  const completed = bookings.filter(b => b.status === 'completed')
+  if (!completed.length) return []
+
+  const latest = completed[0]
+  const service = latest.booking_services?.[0]
+  const serviceName = service?.service_name || 'your last service'
+  const vehicleName = latest.vehicles ? `${latest.vehicles.make} ${latest.vehicles.model}` : 'your vehicle'
+  const category = service?.services?.category || ''
+
+  const maintenanceSlug =
+    category === 'coating' ? 'car-care-deluxe' :
+    category === 'detailing' ? 'basic-glow' :
+    category === 'wash' ? 'interior-detailing' :
+    'basic-wash'
+
+  return [
+    {
+      title: 'Book again',
+      body: `Repeat ${serviceName} for ${vehicleName}.`,
+      href: `/book?rebook=${latest.id}`,
+      icon: RefreshCw,
+    },
+    {
+      title: 'Same service next month',
+      body: 'Prefills the same details and aims for the next available slot around next month.',
+      href: `/book?rebook=${latest.id}&nextMonth=1`,
+      icon: Calendar,
+    },
+    {
+      title: 'Recommended maintenance',
+      body: 'A follow-up service based on your recent vehicle care history.',
+      href: `/book?rebook=${latest.id}&service=${maintenanceSlug}`,
+      icon: Wrench,
+    },
+  ]
 }
