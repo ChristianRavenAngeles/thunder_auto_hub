@@ -1,12 +1,12 @@
 'use client'
 
 const FEATURES = [
-  { icon: '🏠', title: 'Home-Service Convenience',      desc: 'Di na kailangan lumabas. Pumunta kami sa inyo — opisina, bahay, kahit saan sa loob ng aming service area.' },
-  { icon: '✦',  title: 'Premium Quality Results',       desc: 'Professional-grade chemicals at equipment. Hindi basta-basta — nakikita ang pagkakaiba pagkatapos ng bawat serbisyo.' },
-  { icon: '📅', title: 'Easy Online Booking',           desc: 'Book sa loob ng 2 minuto. Pumili ng date at oras, i-submit ang detalye ng sasakyan, tapos hintayin ang aming team.' },
-  { icon: '📍', title: 'Real-Time Tracking',            desc: 'Alam mo kung nasaan na ang aming rider — mula "on the way" hanggang "completed." No guessing games.' },
-  { icon: '🛡', title: 'Coating Warranty',              desc: '1-year warranty sa lahat ng coating services. Kasama na ang maintenance guidance para mapanatili ang proteksyon.' },
-  { icon: '📸', title: 'Before & After Documentation',  desc: 'Kinukuha namin ang before at after photos ng bawat job. Transparent ang proseso, makikita ninyo ang pagbabago.' },
+  { icon: 'HOME', title: 'Home-Service Convenience',     desc: 'Di na kailangan lumabas. Pumunta kami sa inyo, opisina, bahay, kahit saan sa loob ng aming service area.' },
+  { icon: 'PRO',  title: 'Premium Quality Results',      desc: 'Professional-grade chemicals at equipment. Hindi basta-basta, nakikita ang pagkakaiba pagkatapos ng bawat serbisyo.' },
+  { icon: 'BOOK', title: 'Easy Online Booking',          desc: 'Book sa loob ng 2 minuto. Pumili ng date at oras, i-submit ang detalye ng sasakyan, tapos hintayin ang aming team.' },
+  { icon: 'LIVE', title: 'Real-Time Tracking',           desc: 'Alam mo kung nasaan na ang aming team, mula "on the way" hanggang "completed." No guessing games.' },
+  { icon: 'SAFE', title: 'Coating Warranty',             desc: '1-year warranty sa lahat ng coating services. Kasama na ang maintenance guidance para mapanatili ang proteksyon.' },
+  { icon: 'PIC',  title: 'Before & After Documentation', desc: 'Kinukuha namin ang before at after photos ng bawat job. Transparent ang proseso, makikita ninyo ang pagbabago.' },
 ]
 
 export default function WhyUsSection() {
@@ -39,7 +39,7 @@ export default function WhyUsSection() {
               <div style={{
                 width: 44, height: 44, background: 'rgba(255,210,0,.1)', border: '1px solid rgba(255,210,0,.2)',
                 borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, marginBottom: 18,
+                fontSize: 11, marginBottom: 18, color: '#FFD200', fontFamily: 'var(--font-cond)', fontWeight: 700,
               }}>{f.icon}</div>
               <h4 style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 18, letterSpacing: '0.04em', marginBottom: 10, color: '#FFFFFF' }}>{f.title}</h4>
               <p style={{ fontSize: 13, color: '#CFCFCF', lineHeight: 1.65 }}>{f.desc}</p>

@@ -31,7 +31,7 @@ const FAQS = [
     items: [
       { q: 'Paano mag-book?', a: 'Pumunta sa aming Booking page, sundan ang 5 simple na hakbang: ilagay ang detalye ng sasakyan, pumili ng serbisyo, ilagay ang lokasyon, pumili ng petsa at oras, tapos i-review at ipadala. Makikipag-ugnayan sa inyo ang aming team para sa final confirmation at payment details.' },
       { q: 'Gaano katagal bago makumpirma ang booking?', a: 'Karaniwang nakikipag-ugnayan kami sa loob ng ilang oras matapos matanggap ang booking request. Para sa mas mabilis na response, magtanong sa aming GHL chatbot o direktang makipag-chat sa aming team.' },
-      { q: 'Pwede ba na ako ang pipili ng rider/technician?', a: 'Hindi pa kami nag-o-offer ng specific rider request sa ngayon. Sinisigurado namin na lahat ng aming riders ay trained at may dalang tamang kagamitan para sa bawat serbisyo.' },
+      { q: 'Pwede ba na ako ang pipili ng technician?', a: 'Hindi pa kami nag-o-offer ng specific technician request sa ngayon. Sinisigurado namin na lahat ng aming team members ay trained at may dalang tamang kagamitan para sa bawat serbisyo.' },
       { q: 'Pwede ba mag-book para sa ibang tao o ibang lokasyon?', a: 'Oo, pwede! Ilagay lang ang lokasyon at detalye ng sasakyan ng taong bibigyan ng serbisyo. Siguraduhing nandoon ang may-ari o responsableng tao sa oras ng appointment.' },
     ],
   },
@@ -50,7 +50,7 @@ const POLICIES = [
     items: [
       'Ang lahat ng bookings ay subject sa confirmation ng aming team bago maging official.',
       'Kailangan ilagay ang eksaktong lokasyon (barangay, city, at landmark kung meron) para matiyak na nasa service area ang appointment.',
-      'Hindi namin maaaring i-guarantee ang eksaktong oras ng arrival lalo na sa maliwanag na trapik o mainit na panahon. Bibigyan kayo ng heads-up bago dumating ang rider.',
+      'Hindi namin maaaring i-guarantee ang eksaktong oras ng arrival lalo na sa maliwanag na trapik o mainit na panahon. Bibigyan kayo ng heads-up bago dumating ang team.',
       'Ang bawat booking ay para sa isang sasakyan lamang. Para sa maraming sasakyan, mag-book ng hiwalay para sa bawat isa.',
       'Ang booking link ay para sa self-booking. Hindi directly nagba-book ang aming team para sa inyo, pero maaari kayong humingi ng tulong sa aming chatbot o customer service.',
     ],
@@ -61,7 +61,7 @@ const POLICIES = [
       'Maaaring mag-reschedule o mag-cancel ng appointment nang hindi bababa sa 24 na oras bago ang appointment nang walang bayad.',
       'Ang cancellation na ginawa nang wala pang 24 na oras bago ang appointment ay maaaring may cancellation fee.',
       'Para sa coating services na may deposit: ang deposit ay non-refundable kung mag-cancel ng wala pang 48 na oras bago ang appointment.',
-      'Para mag-reschedule, makipag-ugnayan sa aming team sa pamamagitan ng GHL chatbot, SMS, o official social media pages.',
+      'Para mag-reschedule, pumunta sa My Bookings sa customer dashboard at pumili ng bagong available slot.',
       'Ang Thunder Auto Hub ay may karapatang mag-reschedule ng appointment dahil sa masamang panahon, emergency, o ibang sitwasyong hindi kontrolado.',
     ],
   },
@@ -80,7 +80,7 @@ const POLICIES = [
     items: [
       'Ginagamit namin ang professional-grade chemicals at equipment para sa lahat ng serbisyo.',
       'Bago at pagkatapos ng serbisyo, kukuha kami ng photos para sa dokumentasyon at para ibahagi sa inyo.',
-      'Kung hindi kayo satisfied sa resulta, sabihin agad bago umalis ang aming rider para maayos namin on-the-spot kung posible.',
+      'Kung hindi kayo satisfied sa resulta, sabihin agad bago umalis ang aming team para maayos namin on-the-spot kung posible.',
       'Ang Thunder Auto Hub ay hindi responsable sa pre-existing na damage sa kotse (scratches, dents, chips) na wala namang kinalaman sa aming serbisyo.',
       'Ang aming technicians ay trained at susunod sa standard operating procedures para sa bawat uri ng serbisyo.',
     ],

@@ -6,10 +6,15 @@ const PROTECTED_CUSTOMER = ['/account']
 const PROTECTED_ADMIN     = ['/admin']
 const PROTECTED_RIDER     = ['/rider']
 const PROTECTED_PARTNER   = ['/partner']
+const RIDER_PORTAL_DISABLED = true
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl
   let response = NextResponse.next({ request })
+
+  if (RIDER_PORTAL_DISABLED && pathname.startsWith('/rider')) {
+    return NextResponse.redirect(new URL('/account', request.url))
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

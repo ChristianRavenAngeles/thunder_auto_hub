@@ -280,7 +280,7 @@ function InventoryModal({ modal, saving, onSave, onClose }) {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">Assigned To</label>
-                <input value={form.assigned_to} onChange={f('assigned_to')} className="input w-full" placeholder="Rider name..." />
+                <input value={form.assigned_to} onChange={f('assigned_to')} className="input w-full" placeholder="Staff name..." />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">Last Maintenance</label>

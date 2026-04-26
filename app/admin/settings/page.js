@@ -135,8 +135,8 @@ export default function SettingsPage() {
       {/* SMS Templates */}
       <div className="card p-5">
         <h2 className="font-bold text-thunder-dark mb-1">SMS Templates</h2>
-        <p className="text-xs text-[var(--text-muted)] mb-3">Use {`{{ref_no}}`}, {`{{rider_name}}`}, {`{{date}}`}, {`{{time}}`} as variables.</p>
-        {['booking_confirmed', 'rider_assigned', 'service_completed', 'reminder'].map(key => {
+        <p className="text-xs text-[var(--text-muted)] mb-3">Use {`{{ref_no}}`}, {`{{date}}`}, and {`{{time}}`} as variables.</p>
+        {['booking_confirmed', 'service_completed', 'reminder'].map(key => {
           const templates = settings.sms_templates || {}
           return (
             <div key={key} className="mb-3">

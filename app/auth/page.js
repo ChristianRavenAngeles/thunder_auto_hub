@@ -6,9 +6,8 @@ import Link from 'next/link'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
 
-const STAFF_AUTH_ROLES = ['admin', 'manager', 'staff', 'rider', 'super_admin']
+const STAFF_AUTH_ROLES = ['admin', 'manager', 'staff', 'super_admin']
 const ADMIN_ROLES = ['admin', 'manager', 'staff', 'super_admin']
-const RIDER_ROLES = ['rider', 'admin', 'super_admin']
 
 function isSafeRedirect(path) {
   return path?.startsWith('/') && !path.startsWith('//')
@@ -17,10 +16,9 @@ function isSafeRedirect(path) {
 function getStaffDestination(role, redirect) {
   if (isSafeRedirect(redirect)) {
     if (redirect.startsWith('/admin') && ADMIN_ROLES.includes(role)) return redirect
-    if (redirect.startsWith('/rider') && RIDER_ROLES.includes(role)) return redirect
   }
 
-  return role === 'rider' ? '/rider' : '/admin'
+  return '/admin'
 }
 
 /* ── Animations ──────────────────────────────────────────────────── */
@@ -253,7 +251,7 @@ function AuthForm() {
   const staffFormValid  = Boolean(email.trim() && password)
 
   const panelMeta = role === 'staff'
-    ? { badge: 'STAFF PORTAL', title: 'Secure Team Access', description: 'Operational login for admin, manager, staff, and rider accounts.' }
+    ? { badge: 'STAFF PORTAL', title: 'Secure Team Access', description: 'Operational login for admin, manager, and staff accounts.' }
     : step === 'success'
       ? { badge: 'ACCESS GRANTED', title: 'You Are Ready', description: 'Your account is set and your dashboard is waiting.' }
       : {
@@ -302,8 +300,7 @@ function AuthForm() {
       if (!res.ok) throw new Error(data.error || 'Login failed')
 
       toast.success('Welcome back!')
-      const destination = data.role === 'rider' ? '/rider' : '/admin'
-      router.push(destination)
+      router.push(getStaffDestination(data.role, redirect))
       router.refresh()
     } catch (err) {
       toast.error(err.message)
@@ -725,7 +722,7 @@ function AuthForm() {
           <form onSubmit={handleAdminLogin} style={{ animation: 'auth-fadeUp 0.5s ease both' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 42, lineHeight: 1, marginBottom: 8, color: '#FFFFFF' }}>STAFF LOGIN</h2>
             <p style={{ fontSize: 14, color: '#CFCFCF', marginBottom: 32, lineHeight: 1.5 }}>
-              Para sa admin, manager, staff, at rider accounts.
+              Para sa admin, manager, at staff accounts.
             </p>
 
             {/* Email */}

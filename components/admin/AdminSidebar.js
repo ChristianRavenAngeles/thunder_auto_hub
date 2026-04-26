@@ -20,7 +20,7 @@ const NAV_GROUPS = [
     label: 'PEOPLE',
     items: [
       { href: '/admin/customers', icon: 'users',     label: 'Customers'      },
-      { href: '/admin/staff',     icon: 'staff',     label: 'Staff & Riders' },
+      { href: '/admin/staff',     icon: 'staff',     label: 'Staff'          },
       { href: '/admin/leads',     icon: 'leads',     label: 'Leads'          },
     ],
   },

@@ -37,7 +37,7 @@ export async function POST(request) {
       .eq('id', data.user.id)
       .single()
 
-    if (!['admin', 'manager', 'staff', 'rider', 'super_admin'].includes(profile?.role)) {
+    if (!['admin', 'manager', 'staff', 'super_admin'].includes(profile?.role)) {
       await supabase.auth.signOut()
       return NextResponse.json({ error: 'This account is not authorized for staff login.' }, { status: 403 })
     }

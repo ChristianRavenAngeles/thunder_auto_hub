@@ -4,7 +4,7 @@ const REVIEWS = [
   { init: 'M', name: 'Mark T.',  car: 'Toyota Fortuner',   text: 'Super satisfied! Hindi ko inasahan na ganito kaganda ang resulta ng basic wash nila. Pumunta sila on time at very professional ang team. Highly recommended! 🙌' },
   { init: 'J', name: 'Jessa P.', car: 'Honda Civic',       text: 'Nagpa-ceramic coating ako — wow lang. 2 days lang pero sulit na sulit. Parang bago ang kotse ko. Plus yung tracking feature, swak na swak para sa busy na tao.' },
   { init: 'C', name: 'Carlo M.', car: 'Mitsubishi Triton',  text: 'Nagtake kami ng Thunder Essential membership at worth every peso. 3 basic wash + 1 glow for less than ₱1,500? Solid deal para sa large vehicle.' },
-  { init: 'R', name: 'Rhea B.',  car: 'Toyota Veloz',      text: 'Ang dali mag-book online. Ilang minuto lang. Sinend nila ang rider details bago dumating at nakita ko ang progress sa app. 10/10 experience!' },
+  { init: 'R', name: 'Rhea B.',  car: 'Toyota Veloz',      text: 'Ang dali mag-book online. Ilang minuto lang. Sinend nila ang team details bago dumating at nakita ko ang progress sa app. 10/10 experience!' },
   { init: 'J', name: 'Jun R.',   car: 'Ford Ranger',       text: 'Sa lahat ng car wash na natry ko, Thunder ang pinaka-professional at pinaka-buo ang ginagawa. Before/after photos pa na sine-send nila. Grabe.' },
   { init: 'A', name: 'Anna L.',  car: 'Toyota Alphard',    text: 'Mahirap hanapin ang mapagkakatiwalaang car care para sa malaking van. Natry ko ang Thunder at hindi na ako maghahanap pa. Laging babalik-balik! 💯' },
 ]
