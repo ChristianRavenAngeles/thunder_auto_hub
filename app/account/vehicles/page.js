@@ -1,19 +1,25 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { Car, Plus, Trash2, Edit2, Check, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Car, Check, Edit2, Plus, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { createClient } from '@/lib/supabase/client'
 
-const VEHICLE_TYPES = ['Sedan', 'SUV', 'Pickup', 'Van', 'Hatchback', 'Crossover', 'Coupe', 'Truck']
+const EMPTY_FORM = { make: '', model: '', year: '', plate: '', color: '', tier: 'M' }
+const TIERS = [
+  { value: 'S', label: 'Small' },
+  { value: 'M', label: 'Medium' },
+  { value: 'L', label: 'Large' },
+  { value: 'XL', label: 'Extra Large' },
+]
 
 export default function VehiclesPage() {
-  const supabase = createClient()
+  const [supabase] = useState(() => createClient())
   const [vehicles, setVehicles] = useState([])
-  const [loading, setLoading]   = useState(true)
-  const [adding, setAdding]     = useState(false)
-  const [editId, setEditId]     = useState(null)
-  const [form, setForm]         = useState({ make: '', model: '', year: '', plate_number: '', color: '', vehicle_type: 'Sedan' })
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [editId, setEditId] = useState(null)
+  const [form, setForm] = useState(EMPTY_FORM)
 
   useEffect(() => { load() }, [])
 
@@ -25,17 +31,33 @@ export default function VehiclesPage() {
     setLoading(false)
   }
 
+  function resetForm() {
+    setAdding(false)
+    setEditId(null)
+    setForm(EMPTY_FORM)
+  }
+
   async function save() {
-    if (!form.make || !form.model) return toast.error('Make and model are required.')
+    if (!form.make || !form.model || !form.tier) return toast.error('Make, model, and tier are required.')
     const { data: { user } } = await supabase.auth.getUser()
+    const payload = {
+      make: form.make,
+      model: form.model,
+      year: form.year ? Number(form.year) : null,
+      plate: form.plate || null,
+      color: form.color || null,
+      tier: form.tier,
+    }
+
     if (editId) {
-      await supabase.from('vehicles').update(form).eq('id', editId)
+      await supabase.from('vehicles').update(payload).eq('id', editId)
       toast.success('Vehicle updated.')
     } else {
-      await supabase.from('vehicles').insert({ ...form, user_id: user.id })
+      await supabase.from('vehicles').insert({ ...payload, user_id: user.id })
       toast.success('Vehicle added.')
     }
-    setAdding(false); setEditId(null); setForm({ make: '', model: '', year: '', plate_number: '', color: '', vehicle_type: 'Sedan' })
+
+    resetForm()
     load()
   }
 
@@ -46,9 +68,17 @@ export default function VehiclesPage() {
     load()
   }
 
-  function startEdit(v) {
-    setForm({ make: v.make, model: v.model, year: v.year || '', plate_number: v.plate_number || '', color: v.color || '', vehicle_type: v.vehicle_type || 'Sedan' })
-    setEditId(v.id); setAdding(true)
+  function startEdit(vehicle) {
+    setForm({
+      make: vehicle.make || '',
+      model: vehicle.model || '',
+      year: vehicle.year || '',
+      plate: vehicle.plate || '',
+      color: vehicle.color || '',
+      tier: vehicle.tier || 'M',
+    })
+    setEditId(vehicle.id)
+    setAdding(true)
   }
 
   if (loading) return <div className="p-6 text-[var(--text-muted)] text-sm">Loading...</div>
@@ -60,7 +90,7 @@ export default function VehiclesPage() {
           <h1 className="text-2xl font-bold font-display text-thunder-dark">My Vehicles</h1>
           <p className="text-[var(--text-muted)] text-sm mt-0.5">Manage the cars you want serviced.</p>
         </div>
-        <button onClick={() => { setAdding(true); setEditId(null); setForm({ make: '', model: '', year: '', plate_number: '', color: '', vehicle_type: 'Sedan' }) }} className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
+        <button onClick={() => { setAdding(true); setEditId(null); setForm(EMPTY_FORM) }} className="btn-primary flex items-center justify-center gap-2 w-full sm:w-auto">
           <Plus className="w-4 h-4" /> Add Vehicle
         </button>
       </div>
@@ -72,18 +102,18 @@ export default function VehiclesPage() {
             <div><label className="label">Make</label><input className="input" placeholder="Toyota" value={form.make} onChange={e => setForm(f => ({ ...f, make: e.target.value }))} /></div>
             <div><label className="label">Model</label><input className="input" placeholder="Fortuner" value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))} /></div>
             <div><label className="label">Year</label><input className="input" placeholder="2022" value={form.year} onChange={e => setForm(f => ({ ...f, year: e.target.value }))} /></div>
-            <div><label className="label">Plate Number</label><input className="input" placeholder="ABC 1234" value={form.plate_number} onChange={e => setForm(f => ({ ...f, plate_number: e.target.value }))} /></div>
+            <div><label className="label">Plate Number</label><input className="input" placeholder="ABC 1234" value={form.plate} onChange={e => setForm(f => ({ ...f, plate: e.target.value.toUpperCase() }))} /></div>
             <div><label className="label">Color</label><input className="input" placeholder="White" value={form.color} onChange={e => setForm(f => ({ ...f, color: e.target.value }))} /></div>
             <div>
-              <label className="label">Type</label>
-              <select className="input" value={form.vehicle_type} onChange={e => setForm(f => ({ ...f, vehicle_type: e.target.value }))}>
-                {VEHICLE_TYPES.map(t => <option key={t}>{t}</option>)}
+              <label className="label">Tier</label>
+              <select className="input" value={form.tier} onChange={e => setForm(f => ({ ...f, tier: e.target.value }))}>
+                {TIERS.map(t => <option key={t.value} value={t.value}>{t.value} - {t.label}</option>)}
               </select>
             </div>
           </div>
           <div className="flex flex-wrap gap-2 mt-4">
             <button onClick={save} className="btn-primary flex items-center gap-1"><Check className="w-4 h-4" /> Save</button>
-            <button onClick={() => { setAdding(false); setEditId(null) }} className="btn-secondary flex items-center gap-1"><X className="w-4 h-4" /> Cancel</button>
+            <button onClick={resetForm} className="btn-secondary flex items-center gap-1"><X className="w-4 h-4" /> Cancel</button>
           </div>
         </div>
       )}
@@ -103,7 +133,7 @@ export default function VehiclesPage() {
               </div>
               <div className="flex-1">
                 <p className="font-semibold text-thunder-dark">{v.make} {v.model} {v.year && `(${v.year})`}</p>
-                <p className="text-sm text-[var(--text-muted)]">{v.plate_number || 'No plate'} · {v.color || '—'} · {v.vehicle_type}</p>
+                <p className="text-sm text-[var(--text-muted)]">{v.plate || 'No plate'} - {v.color || '-'} - {v.tier || 'M'}</p>
               </div>
               <div className="flex gap-1 self-end sm:self-auto">
                 <button onClick={() => startEdit(v)} className="p-2 text-[var(--text-muted)] hover:text-brand-600 rounded-lg hover:bg-brand-50 transition-colors">

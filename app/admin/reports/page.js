@@ -33,7 +33,7 @@ export default function ReportsPage() {
       supabase.from('bookings').select('*, booking_services(service_name, price)').gte('created_at', from).order('created_at'),
       supabase.from('payments').select('amount, created_at').eq('status', 'paid').gte('created_at', from),
       supabase.from('expenses').select('amount').gte('date', from.split('T')[0]),
-      supabase.from('bookings').select('total_price').gte('scheduled_date', new Date().toISOString().split('T')[0]).in('status', ['confirmed', 'assigned']),
+      supabase.from('bookings').select('total_price').gte('scheduled_date', new Date().toISOString().split('T')[0]).in('status', ['confirmed', 'rescheduled']),
     ])
 
     // Daily revenue

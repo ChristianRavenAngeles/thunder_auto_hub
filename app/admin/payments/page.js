@@ -20,7 +20,7 @@ export default async function PaymentsPage({ searchParams }) {
 
   let query = admin
     .from('payments')
-    .select('*, bookings(ref_number, user_id, profiles(full_name, phone))')
+    .select('*, bookings(reference_no, user_id, profiles(full_name, phone))')
     .order('created_at', { ascending: false })
     .limit(200)
 
@@ -81,16 +81,16 @@ export default async function PaymentsPage({ searchParams }) {
           <tbody>
             {(payments || []).map(p => (
               <tr key={p.id} className="border-b border-[var(--border)] hover:bg-[var(--bg-2)]/50 transition-colors">
-                <td className="p-4 font-mono text-xs text-brand-600">{p.bookings?.ref_number || '—'}</td>
+                <td className="p-4 font-mono text-xs text-brand-600">{p.bookings?.reference_no || '—'}</td>
                 <td className="p-4">
                   <p className="font-medium text-thunder-dark">{p.bookings?.profiles?.full_name || '—'}</p>
                   <p className="text-xs text-[var(--text-muted)]">{p.bookings?.profiles?.phone || ''}</p>
                 </td>
-                <td className="p-4 text-[var(--text-2)] capitalize">{p.payment_type || '—'}</td>
+                <td className="p-4 text-[var(--text-2)] capitalize">{p.is_deposit ? 'Deposit' : 'Balance'}</td>
                 <td className="p-4 font-semibold text-thunder-dark">{formatPrice(p.amount)}</td>
                 <td className="p-4"><span className={`${STATUS_COLOR[p.status] || 'badge-gray'} text-xs`}>{PAYMENT_STATUS_LABELS[p.status]?.label || p.status}</span></td>
                 <td className="p-4 text-[var(--text-muted)] text-xs">{formatDate(p.created_at)}</td>
-                <td className="p-4 text-[var(--text-2)] capitalize text-xs">{p.payment_method || '—'}</td>
+                <td className="p-4 text-[var(--text-2)] capitalize text-xs">{p.method?.replace('_', ' ') || '—'}</td>
               </tr>
             ))}
           </tbody>

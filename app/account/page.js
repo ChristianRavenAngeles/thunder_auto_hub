@@ -20,7 +20,7 @@ export default async function AccountDashboard() {
     supabase.from('memberships').select('*, membership_plans(name)').eq('user_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
   ])
 
-  const activeBooking = bookings?.find(b => ['confirmed', 'assigned', 'on_the_way', 'in_progress'].includes(b.status))
+  const activeBooking = bookings?.find(b => ['pending', 'confirmed', 'rescheduled', 'in_progress'].includes(b.status))
 
   const stats = [
     { label: 'Total Bookings',    value: profile?.booking_count || 0,          icon: Calendar, href: '/account/bookings' },
@@ -90,7 +90,7 @@ export default async function AccountDashboard() {
                   <Link key={b.id} href={`/track/${b.reference_no}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-[var(--bg-2)] transition-colors">
                     <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                       b.status === 'completed' ? 'bg-green-400' :
-                      b.status === 'in_progress' || b.status === 'on_the_way' ? 'bg-amber-400 animate-pulse' :
+                      b.status === 'in_progress' || b.status === 'rescheduled' ? 'bg-amber-400 animate-pulse' :
                       b.status === 'cancelled' ? 'bg-red-400' : 'bg-brand-400'
                     }`} />
                     <div className="flex-1 min-w-0">

@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export default async function GalleryPage() {
   const admin = createAdminClient()
   const { data: photos } = await admin
-    .from('booking_photos')
+    .from('photos')
     .select('*, bookings(booking_services(service_name))')
     .eq('is_public', true)
     .order('created_at', { ascending: false })
@@ -19,8 +19,8 @@ export default async function GalleryPage() {
   const pairs = []
   const byBooking = (photos || []).reduce((acc, p) => {
     if (!acc[p.booking_id]) acc[p.booking_id] = { before: [], after: [], service: p.bookings?.booking_services?.[0]?.service_name }
-    if (p.photo_type === 'before') acc[p.booking_id].before.push(p.url)
-    if (p.photo_type === 'after')  acc[p.booking_id].after.push(p.url)
+    if (p.type === 'before') acc[p.booking_id].before.push(p.url)
+    if (p.type === 'after')  acc[p.booking_id].after.push(p.url)
     return acc
   }, {})
 

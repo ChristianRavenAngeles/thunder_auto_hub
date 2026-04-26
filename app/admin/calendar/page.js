@@ -6,8 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 const STATUS_DOT = {
   pending:    '#FCD34D',
   confirmed:  '#34D399',
-  assigned:   '#60A5FA',
-  on_the_way: '#A78BFA',
+  rescheduled:'#A78BFA',
   in_progress:'#FB923C',
   completed:  '#34D399',
   cancelled:  '#F87171',

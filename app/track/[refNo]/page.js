@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { Zap, MapPin, Phone, Check, Clock, Truck, Sparkles, CheckCircle, XCircle, Search } from 'lucide-react'
+import { Check, Clock, Truck, Sparkles, CheckCircle, XCircle } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
 import PublicNav from '@/components/layout/PublicNav'
@@ -13,8 +13,9 @@ import PublicFooter from '@/components/layout/PublicFooter'
 const STATUS_STEPS = [
   { key: 'pending',     icon: Clock,        label: 'Booking Received',  desc: 'Natanggap na ang inyong booking.' },
   { key: 'confirmed',   icon: Check,        label: 'Confirmed',          desc: 'Confirmed na! Abangan ang aming team.' },
-  { key: 'assigned',    icon: Truck,        label: 'Rider Assigned',     desc: 'May rider na para sa inyong booking.' },
-  { key: 'on_the_way',  icon: Truck,        label: 'On the Way',         desc: 'Papunta na ang aming rider sa inyo.' },
+  { key: 'rescheduled', icon: Clock,        label: 'Rescheduled',        desc: 'Na-update na ang schedule ng inyong booking.' },
+  { key: 'assigned',    icon: Truck,        label: 'Team Assigned',      desc: 'May team na para sa inyong booking.' },
+  { key: 'on_the_way',  icon: Truck,        label: 'On the Way',         desc: 'Papunta na ang aming team sa inyo.' },
   { key: 'in_progress', icon: Sparkles,     label: 'In Progress',        desc: 'Nagsimula na ang serbisyo.' },
   { key: 'completed',   icon: CheckCircle,  label: 'Completed!',         desc: 'Tapos na! Salamat sa tiwala. 🙏' },
 ]

@@ -10,7 +10,8 @@ const peso = (n) => '₱' + Number(n || 0).toLocaleString()
 const STATUS_MAP = {
   pending:     { label: 'Pending',     bg: 'rgba(251,191,36,.1)',   color: '#FBB724', border: 'rgba(251,191,36,.2)',  dot: '#FBB724' },
   confirmed:   { label: 'Confirmed',   bg: 'rgba(96,165,250,.12)',  color: '#60A5FA', border: 'rgba(96,165,250,.25)', dot: '#60A5FA' },
-  'in-progress':{ label: 'In Progress',bg: 'rgba(255,210,0,.12)',   color: '#FFD200', border: 'rgba(255,210,0,.25)',  dot: '#FFD200' },
+  rescheduled: { label: 'Rescheduled', bg: 'rgba(167,139,250,.12)', color: '#A78BFA', border: 'rgba(167,139,250,.25)', dot: '#A78BFA' },
+  in_progress: { label: 'In Progress', bg: 'rgba(255,210,0,.12)',   color: '#FFD200', border: 'rgba(255,210,0,.25)',  dot: '#FFD200' },
   completed:   { label: 'Completed',   bg: 'rgba(34,197,94,.12)',   color: '#22C55E', border: 'rgba(34,197,94,.25)',  dot: '#22C55E' },
   cancelled:   { label: 'Cancelled',   bg: 'rgba(248,113,113,.1)',  color: '#F87171', border: 'rgba(248,113,113,.2)', dot: '#F87171' },
 }
@@ -69,7 +70,7 @@ export default async function AdminDashboard() {
   const [statsResult, bookingsResult, paymentsResult, weeklyPayments, prevWeeklyPayments] = await Promise.all([
     admin.rpc('get_dashboard_stats').single(),
     admin.from('bookings')
-      .select('id, reference_no, status, scheduled_date, total_amount, created_at, profiles(full_name), vehicles(make, model)')
+      .select('id, reference_no, status, scheduled_date, total_price, created_at, profiles(full_name), vehicles(make, model)')
       .order('created_at', { ascending: false })
       .limit(8),
     admin.from('payments')
@@ -276,7 +277,7 @@ export default async function AdminDashboard() {
                     <StatusBadge status={b.status} />
                   </td>
                   <td style={{ padding: '13px 14px', borderBottom: '1px solid rgba(42,42,42,.7)', fontFamily: 'var(--font-display)', fontSize: 16, color: '#FFFFFF' }}>
-                    {b.total_amount ? peso(b.total_amount) : '—'}
+                    {b.total_price ? peso(b.total_price) : '—'}
                   </td>
                 </tr>
               ))}
