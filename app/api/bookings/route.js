@@ -118,6 +118,17 @@ export async function POST(request) {
       new_data:   { reference_no: booking.reference_no, total: body.total },
     })
 
+    await admin.from('booking_status_history').insert({
+      booking_id: booking.id,
+      changed_by: body.user_id,
+      actor_role: 'customer',
+      action: 'booking_created',
+      to_status: booking.status,
+      to_scheduled_date: body.scheduled_date,
+      to_scheduled_time: body.scheduled_time,
+      note: 'Booking submitted from the website.',
+    })
+
     return NextResponse.json({ ok: true, reference_no: booking.reference_no, booking_id: booking.id })
   } catch (err) {
     console.error('[POST /api/bookings]', err)

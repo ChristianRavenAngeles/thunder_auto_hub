@@ -10,7 +10,7 @@ language sql
 security definer
 stable
 as $$
-  select coalesce(sum(total_amount), 0)
+  select coalesce(sum(total_price), 0)
   from bookings
   where status = 'completed';
 $$;
@@ -27,6 +27,6 @@ as $$
     'pending_bookings',  (select count(*) from bookings where status in ('pending','confirmed')),
     'today_bookings',    (select count(*) from bookings where scheduled_date = current_date),
     'total_customers',   (select count(*) from profiles where role = 'customer'),
-    'total_revenue',     (select coalesce(sum(total_amount), 0) from bookings where status = 'completed')
+    'total_revenue',     (select coalesce(sum(total_price), 0) from bookings where status = 'completed')
   );
 $$;
