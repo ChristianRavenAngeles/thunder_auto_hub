@@ -3,11 +3,64 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { sendBookingConfirmation } from '@/lib/sms'
 import { format } from 'date-fns'
+import { ACTIVE_BOOKING_STATUSES, isSlotAvailable, settingsFromRows } from '@/lib/availability'
 
 export async function POST(request) {
   try {
     const body = await request.json()
     const admin = createAdminClient()
+
+    if (!body.user_id) {
+      return NextResponse.json({ error: 'Please sign in before booking a service.' }, { status: 401 })
+    }
+
+    const [settingsResult, blackoutResult, blockResult, bookingResult] = await Promise.all([
+      admin.from('settings').select('key, value'),
+      admin.from('blackout_dates').select('date'),
+      admin.from('booking_slot_blocks').select('date, start_time, end_time, is_full_day'),
+      admin
+        .from('bookings')
+        .select('id, scheduled_date, scheduled_time')
+        .in('status', ACTIVE_BOOKING_STATUSES),
+    ])
+
+    const slotOk = isSlotAvailable({
+      date: body.scheduled_date,
+      time: body.scheduled_time,
+      settings: settingsFromRows(settingsResult.data || []),
+      blackoutDates: (blackoutResult.data || []).map(row => row.date),
+      slotBlocks: blockResult.data || [],
+      occupiedBookings: bookingResult.data || [],
+    })
+
+    if (!slotOk) {
+      return NextResponse.json({ error: 'Selected schedule is no longer available.' }, { status: 409 })
+    }
+
+    let serviceLineItems = []
+    if (body.services?.length) {
+      const servicesWithoutIds = body.services.filter(svc => !svc.id).map(svc => svc.name).filter(Boolean)
+      let serviceIdsByName = {}
+      if (servicesWithoutIds.length) {
+        const { data: serviceRows } = await admin
+          .from('services')
+          .select('id, name')
+          .in('name', servicesWithoutIds)
+        serviceIdsByName = (serviceRows || []).reduce((acc, svc) => ({ ...acc, [svc.name]: svc.id }), {})
+      }
+
+      serviceLineItems = body.services.map(svc => {
+        const serviceId = svc.id || serviceIdsByName[svc.name]
+        if (!serviceId) throw new Error(`Service is unavailable: ${svc.name}`)
+        return {
+          service_id:   serviceId,
+          service_name: svc.name,
+          unit_price:   svc.price,
+          quantity:     1,
+          subtotal:     svc.price,
+        }
+      })
+    }
 
     // Create booking
     const { data: booking, error: bookingErr } = await admin.from('bookings').insert({
@@ -17,7 +70,7 @@ export async function POST(request) {
       status:         'pending',
       scheduled_date: body.scheduled_date,
       scheduled_time: body.scheduled_time,
-      address:        body.address,
+      address:        body.address || [body.barangay, body.city].filter(Boolean).join(', '),
       barangay:       body.barangay,
       city:           body.city,
       landmarks:      body.landmarks,
@@ -35,7 +88,7 @@ export async function POST(request) {
     if (bookingErr) throw bookingErr
 
     // Create vehicle record if guest (no vehicle_id)
-    if (!body.vehicle_id && body.vehicle_make && body.vehicle_tier) {
+    if (!body.vehicle_id && body.user_id && body.vehicle_make && body.vehicle_tier) {
       const { data: vehicle } = await admin.from('vehicles').insert({
         user_id: body.user_id,
         make:    body.vehicle_make,
@@ -49,17 +102,34 @@ export async function POST(request) {
     }
 
     // Create booking service line items
-    if (body.services?.length) {
+    if (serviceLineItems.length) {
       await admin.from('booking_services').insert(
-        body.services.map(svc => ({
-          booking_id:   booking.id,
-          service_id:   svc.id,
-          service_name: svc.name,
-          unit_price:   svc.price,
-          quantity:     1,
-          subtotal:     svc.price,
-        }))
+        serviceLineItems.map(item => ({ booking_id: booking.id, ...item }))
       )
+    }
+
+    if (body.user_id) {
+      const { data: conversation } = await admin
+        .from('conversations')
+        .insert({ booking_id: booking.id, type: 'customer_admin' })
+        .select('id')
+        .single()
+
+      if (conversation) {
+        const { data: adminsForChat } = await admin
+          .from('profiles')
+          .select('id')
+          .in('role', ['admin', 'manager', 'staff', 'super_admin'])
+
+        const participants = [
+          { conversation_id: conversation.id, user_id: body.user_id },
+          ...(adminsForChat || []).map(person => ({ conversation_id: conversation.id, user_id: person.id })),
+        ]
+
+        await admin
+          .from('conversation_participants')
+          .upsert(participants, { onConflict: 'conversation_id,user_id' })
+      }
     }
 
     // Record deposit payment

@@ -5,20 +5,17 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatDate, BOOKING_STATUS_LABELS } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
+import {
+  ACTIVE_BOOKING_STATUSES,
+  buildAvailableSlotOptions,
+  buildTimeSlots,
+  displayTime,
+  isSlotAvailable,
+  settingsFromRows,
+} from '@/lib/availability'
 
 export const metadata = { title: 'My Bookings - Thunder Auto Hub' }
 export const dynamic = 'force-dynamic'
-
-const TIME_SLOTS = [
-  { value: '08:00', label: '8:00 AM' },
-  { value: '09:00', label: '9:00 AM' },
-  { value: '10:00', label: '10:00 AM' },
-  { value: '11:00', label: '11:00 AM' },
-  { value: '13:00', label: '1:00 PM' },
-  { value: '14:00', label: '2:00 PM' },
-  { value: '15:00', label: '3:00 PM' },
-  { value: '16:00', label: '4:00 PM' },
-]
 
 const STATUS_COLOR = {
   pending:     'badge-gray',
@@ -30,53 +27,6 @@ const STATUS_COLOR = {
   no_show:      'badge-red',
 }
 
-function isoDate(date) {
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function displayTime(value) {
-  if (!value) return '-'
-  const normalized = String(value).slice(0, 5)
-  const match = TIME_SLOTS.find(slot => slot.value === normalized)
-  return match?.label || value
-}
-
-function normalizeTime(value) {
-  return String(value || '').slice(0, 5)
-}
-
-function buildSlotOptions(blackouts = [], occupied = []) {
-  const blocked = new Set(blackouts)
-  const occupiedSlots = new Set(occupied.map(slot => `${slot.scheduled_date}|${normalizeTime(slot.scheduled_time)}`))
-  const slots = []
-  const cursor = new Date()
-  cursor.setDate(cursor.getDate() + 1)
-
-  while (slots.length < 40) {
-    const day = cursor.getDay()
-    const date = isoDate(cursor)
-    if (day >= 1 && day <= 5 && !blocked.has(date)) {
-      const dateLabel = cursor.toLocaleDateString('en-PH', {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      })
-      TIME_SLOTS.forEach(time => {
-        const value = `${date}|${time.value}`
-        if (!occupiedSlots.has(value)) {
-          slots.push({ value, label: `${dateLabel} - ${time.label}` })
-        }
-      })
-    }
-    cursor.setDate(cursor.getDate() + 1)
-  }
-  return slots.slice(0, 40)
-}
-
 async function getBlackoutDates(admin) {
   const { data } = await admin.from('blackout_dates').select('date')
   return (data || []).map(row => row.date)
@@ -85,20 +35,19 @@ async function getBlackoutDates(admin) {
 async function getOccupiedSlots(admin) {
   const { data } = await admin
     .from('bookings')
-    .select('scheduled_date, scheduled_time')
-    .in('status', ['pending', 'confirmed', 'rescheduled', 'in_progress'])
+    .select('id, scheduled_date, scheduled_time')
+    .in('status', ACTIVE_BOOKING_STATUSES)
   return data || []
 }
 
-function isAllowedDate(date, blackoutDates) {
-  if (!date) return false
-  const candidate = new Date(`${date}T00:00:00`)
-  const tomorrow = new Date()
-  tomorrow.setHours(0, 0, 0, 0)
-  tomorrow.setDate(tomorrow.getDate() + 1)
+async function getSettings(admin) {
+  const { data } = await admin.from('settings').select('key, value')
+  return settingsFromRows(data || [])
+}
 
-  const day = candidate.getDay()
-  return candidate >= tomorrow && day >= 1 && day <= 5 && !blackoutDates.includes(date)
+async function getSlotBlocks(admin) {
+  const { data } = await admin.from('booking_slot_blocks').select('date, start_time, end_time, is_full_day')
+  return data || []
 }
 
 async function notifyAdmins(admin, payload) {
@@ -134,26 +83,32 @@ async function rescheduleBooking(formData) {
   if (!user || !bookingId || !nextDate || !nextTime || !reason) return
 
   const admin = createAdminClient()
-  const blackoutDates = await getBlackoutDates(admin)
-  if (!isAllowedDate(nextDate, blackoutDates) || !TIME_SLOTS.some(slot => slot.value === nextTime)) return
+  const [settings, blackoutDates, slotBlocks, occupiedSlots] = await Promise.all([
+    getSettings(admin),
+    getBlackoutDates(admin),
+    getSlotBlocks(admin),
+    getOccupiedSlots(admin),
+  ])
 
   const booking = await getOwnedBooking(admin, user.id, bookingId)
   if (!booking || !['pending', 'confirmed', 'rescheduled'].includes(booking.status)) return
 
-  const { data: conflicts } = await admin
-    .from('bookings')
-    .select('id')
-    .eq('scheduled_date', nextDate)
-    .eq('scheduled_time', nextTime)
-    .in('status', ['pending', 'confirmed', 'rescheduled', 'in_progress'])
-    .neq('id', booking.id)
-    .limit(1)
-  if (conflicts?.length) return
+  const normalizedTime = String(nextTime || '').slice(0, 5)
+  const slotOk = isSlotAvailable({
+    date: nextDate,
+    time: normalizedTime,
+    settings,
+    blackoutDates,
+    slotBlocks,
+    occupiedBookings: occupiedSlots,
+    excludeBookingId: booking.id,
+  })
+  if (!slotOk || !buildTimeSlots(settings).some(slot => slot.value === normalizedTime)) return
 
   await admin.from('bookings').update({
     status: 'rescheduled',
     scheduled_date: nextDate,
-    scheduled_time: nextTime,
+    scheduled_time: normalizedTime,
     updated_at: new Date().toISOString(),
   }).eq('id', booking.id)
 
@@ -167,7 +122,7 @@ async function rescheduleBooking(formData) {
     from_scheduled_date: booking.scheduled_date,
     from_scheduled_time: booking.scheduled_time,
     to_scheduled_date: nextDate,
-    to_scheduled_time: nextTime,
+    to_scheduled_time: normalizedTime,
     reason,
     note: 'Customer selected a new service schedule.',
   })
@@ -235,17 +190,26 @@ export default async function AccountBookingsPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const [{ data: bookings }, blackoutDates, occupiedSlots] = await Promise.all([
+  const [{ data: bookings }, settings, blackoutDates, occupiedSlots, slotBlocks] = await Promise.all([
     admin
       .from('bookings')
       .select('*, booking_services(service_name, unit_price, subtotal), vehicles(make, model, plate, tier), booking_status_history(*)')
       .eq('user_id', user.id)
       .order('scheduled_date', { ascending: false }),
+    getSettings(admin),
     getBlackoutDates(admin),
     getOccupiedSlots(admin),
+    getSlotBlocks(admin),
   ])
 
-  const slotOptions = buildSlotOptions(blackoutDates, occupiedSlots)
+  const slotOptions = buildAvailableSlotOptions({
+    settings,
+    blackoutDates,
+    slotBlocks,
+    occupiedBookings: occupiedSlots,
+    days: 45,
+    limit: 40,
+  })
   const active = (bookings || []).filter(b => !['completed', 'cancelled'].includes(b.status))
   const past = (bookings || []).filter(b => ['completed', 'cancelled'].includes(b.status))
 

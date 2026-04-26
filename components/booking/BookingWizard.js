@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { detectTierFromModel, VEHICLE_TIERS } from '@/lib/pricing'
+import { displayTime, normalizeTime } from '@/lib/availability'
 
 /* ─── static data ─── */
 const TIERS = [
@@ -79,8 +79,6 @@ const SERVICE_AREA = [
   { city: 'Angeles',     km: '25 km',  fee: '₱350' },
 ]
 
-const TIMES = ['8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM']
-
 const STEPS = [
   { id: 1, icon: '🚗', label: 'Sasakyan' },
   { id: 2, icon: '✦',  label: 'Serbisyo' },
@@ -89,7 +87,41 @@ const STEPS = [
   { id: 5, icon: '✓',  label: 'Kumpirmasyon' },
 ]
 
-const CAT_COLORS = { Wash: '#FFD200', Detail: '#A78BFA', Coating: '#22C55E' }
+const CAT_COLORS = { Wash: '#FFD200', Detail: '#A78BFA', Detailing: '#A78BFA', Coating: '#22C55E', Maintenance: '#60A5FA' }
+const DB_CATEGORY_LABELS = { wash: 'Wash', detailing: 'Detailing', coating: 'Coating', maintenance: 'Maintenance' }
+
+function serviceCategory(svc) {
+  return svc.cat || DB_CATEGORY_LABELS[svc.category] || 'Maintenance'
+}
+
+function serviceUsesTravelFee(svc) {
+  if (typeof svc.has_travel_fee === 'boolean') return svc.has_travel_fee
+  return serviceCategory(svc) === 'Wash'
+}
+
+function buildServiceCatalog(rows = []) {
+  const catalog = { S: [], M: [], L: [], XL: [] }
+  const tiers = ['S', 'M', 'L', 'XL']
+  rows.forEach(svc => {
+    tiers.forEach(tier => {
+      const price = Number(svc[`price_${tier.toLowerCase()}`] || 0)
+      if (price > 0) {
+        catalog[tier].push({
+          id: svc.id,
+          slug: svc.slug,
+          name: svc.name,
+          category: svc.category,
+          cat: DB_CATEGORY_LABELS[svc.category] || svc.category,
+          price,
+          description: svc.description,
+          duration_hours: svc.duration_hours,
+          has_travel_fee: svc.has_travel_fee,
+        })
+      }
+    })
+  })
+  return catalog
+}
 
 /* ─── sub-components ─── */
 
@@ -255,11 +287,12 @@ function Step1({ vehicle, setVehicle, errors, savedVehicles }) {
 }
 
 /* ─── Step 2 ─── */
-function Step2({ vehicle, services, setServices, errors }) {
-  const list = SERVICES[vehicle.tier] || []
-  const wash    = list.filter(s => s.cat === 'Wash')
-  const detail  = list.filter(s => s.cat === 'Detail')
-  const coating = list.filter(s => s.cat === 'Coating')
+function Step2({ vehicle, services, setServices, errors, serviceCatalog }) {
+  const list = serviceCatalog[vehicle.tier] || []
+  const wash        = list.filter(s => serviceCategory(s) === 'Wash')
+  const detail      = list.filter(s => ['Detail', 'Detailing'].includes(serviceCategory(s)))
+  const coating     = list.filter(s => serviceCategory(s) === 'Coating')
+  const maintenance = list.filter(s => serviceCategory(s) === 'Maintenance')
 
   const toggle = (name) => {
     setServices(services.includes(name) ? services.filter(s => s !== name) : [...services, name])
@@ -290,7 +323,7 @@ function Step2({ vehicle, services, setServices, errors }) {
           </div>
           <div>
             <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 15, color: on ? '#FFFFFF' : '#CFCFCF', letterSpacing: '.04em' }}>{s.name}</div>
-            {s.note && <div style={{ fontSize: 11, color: '#777', marginTop: 1 }}>{s.note}</div>}
+            {(s.note || s.description) && <div style={{ fontSize: 11, color: '#777', marginTop: 1 }}>{s.note || s.description}</div>}
           </div>
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
@@ -327,9 +360,10 @@ function Step2({ vehicle, services, setServices, errors }) {
           Pumili ng kahit isang serbisyo.
         </div>
       )}
-      <Cat title="WASH SERVICES"              icon="💧" items={wash} />
-      <Cat title="DETAILING SERVICES"         icon="✨" items={detail}  accent="#A78BFA" />
-      <Cat title="COATING SERVICES — 25% OFF" icon="🛡" items={coating} accent="#22C55E" />
+      <Cat title="WASH SERVICES"        icon="💧" items={wash} />
+      <Cat title="DETAILING SERVICES"   icon="✨" items={detail}  accent="#A78BFA" />
+      <Cat title="COATING SERVICES"     icon="🛡" items={coating} accent="#22C55E" />
+      <Cat title="MAINTENANCE SERVICES" icon="⚙" items={maintenance} accent="#60A5FA" />
       {services.length > 0 && (
         <div style={{ background: 'rgba(255,210,0,.08)', border: '1px solid rgba(255,210,0,.25)', borderRadius: 12, padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
           <div style={{ fontFamily: 'var(--font-cond)', fontSize: 14, fontWeight: 700, letterSpacing: '.08em', color: '#CFCFCF' }}>{services.length} serbisyo napili</div>
@@ -341,7 +375,7 @@ function Step2({ vehicle, services, setServices, errors }) {
 }
 
 /* ─── Step 3 ─── */
-function Step3({ location, setLocation, errors, vehicle, services }) {
+function Step3({ location, setLocation, errors, vehicle, services, serviceCatalog }) {
   const [fee, setFee] = useState(null)
 
   const checkCity = (city) => {
@@ -350,7 +384,8 @@ function Step3({ location, setLocation, errors, vehicle, services }) {
     setFee(found || null)
   }
 
-  const washSelected = (SERVICES[vehicle.tier] || []).filter(s => s.cat === 'Wash').some(s => services.includes(s.name))
+  const hasTravelFee = (serviceCatalog[vehicle.tier] || [])
+    .some(s => services.includes(s.name) && serviceUsesTravelFee(s))
 
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
@@ -417,7 +452,7 @@ function Step3({ location, setLocation, errors, vehicle, services }) {
           />
         </div>
       </div>
-      {fee && washSelected && (
+      {fee && hasTravelFee && (
         <div style={{ padding: '16px 20px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#22C55E', marginBottom: 2 }}>TRAVEL FEE — {fee.city}</div>
@@ -437,23 +472,14 @@ function Step3({ location, setLocation, errors, vehicle, services }) {
 }
 
 /* ─── Step 4 ─── */
-function Step4({ schedule, setSchedule, errors }) {
-  const today = new Date()
-  const minDate = new Date(today)
-  minDate.setDate(minDate.getDate() + 1)
-  const [month, setMonth] = useState(new Date(minDate.getFullYear(), minDate.getMonth(), 1))
-
-  const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate()
-  const firstDay    = new Date(month.getFullYear(), month.getMonth(), 1).getDay()
-  const monthNames  = ['January','February','March','April','May','June','July','August','September','October','November','December']
-  const dayNames    = ['Su','Mo','Tu','We','Th','Fr','Sa']
-
-  const isDisabled = (d) => {
-    const dt = new Date(month.getFullYear(), month.getMonth(), d)
-    return dt.getDay() === 0 || dt.getDay() === 6 || dt < minDate
-  }
-  const selDate    = schedule.date ? new Date(schedule.date) : null
-  const isSelected = (d) => selDate && selDate.getDate() === d && selDate.getMonth() === month.getMonth() && selDate.getFullYear() === month.getFullYear()
+function Step4({ schedule, setSchedule, errors, availableSlots, loadingAvailability }) {
+  const selectedValue = schedule.date && schedule.time ? `${schedule.date}|${normalizeTime(schedule.time)}` : ''
+  const grouped = availableSlots.reduce((acc, slot) => {
+    if (!acc[slot.date]) acc[slot.date] = []
+    acc[slot.date].push(slot)
+    return acc
+  }, {})
+  const dates = Object.entries(grouped).slice(0, 10)
 
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
@@ -466,81 +492,68 @@ function Step4({ schedule, setSchedule, errors }) {
           Pumili ng petsa at oras.
         </div>
       )}
-      {/* Calendar — full width */}
-      <div style={{ marginBottom: 24 }}>
-          <FieldLabel required>DATE</FieldLabel>
-          <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 12, padding: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
-                style={{ background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 8 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M15 18l-6-6 6-6" /></svg>
-              </button>
-              <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 16, letterSpacing: '.1em', color: '#FFFFFF' }}>{monthNames[month.getMonth()]} {month.getFullYear()}</span>
-              <button onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
-                style={{ background: 'none', border: 'none', color: '#CFCFCF', cursor: 'pointer', padding: 8 }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 18l6-6-6-6" /></svg>
-              </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4, marginBottom: 8 }}>
-              {dayNames.map(d => (
-                <div key={d} style={{ textAlign: 'center', fontSize: 12, color: '#777', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.08em', padding: '6px 0' }}>{d}</div>
-              ))}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: 4 }}>
-              {Array.from({ length: firstDay }).map((_, i) => <div key={`e${i}`} />)}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const d = i + 1
-                const dis = isDisabled(d)
-                const sel = isSelected(d)
-                return (
-                  <button key={d} disabled={dis}
-                    onClick={() => {
-                      const y = month.getFullYear(), m = month.getMonth()
-                      const pad = n => String(n).padStart(2, '0')
-                      setSchedule({ ...schedule, date: `${y}-${pad(m + 1)}-${pad(d)}` })
-                    }}
-                    style={{
-                      height: 44, borderRadius: 8, border: `1.5px solid ${sel ? '#FFD200' : 'transparent'}`,
-                      background: sel ? '#FFD200' : dis ? 'transparent' : '#222',
-                      color: sel ? '#0B0B0B' : dis ? '#3A3A3A' : '#FFFFFF',
-                      cursor: dis ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, transition: 'all .1s',
-                    }}>{d}</button>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-        {/* Time — full width horizontal wrap */}
-        <div>
-          <FieldLabel required>TIME</FieldLabel>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {TIMES.map(t => (
-              <button key={t} onClick={() => setSchedule({ ...schedule, time: t })} type="button" style={{
-                flex: '1 1 calc(33% - 8px)', minWidth: 120,
-                padding: '14px 18px', borderRadius: 10,
-                border: `1.5px solid ${schedule.time === t ? '#FFD200' : '#3A3A3A'}`,
-                background: schedule.time === t ? 'rgba(255,210,0,.1)' : '#1A1A1A',
-                color: schedule.time === t ? '#FFD200' : '#CFCFCF',
-                cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, letterSpacing: '.06em', transition: 'all .15s',
-              }}>{t}</button>
+      <FieldLabel required>AVAILABLE SLOTS</FieldLabel>
+      <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 12, padding: 18 }}>
+        {loadingAvailability ? (
+          <div style={{ color: '#777', fontSize: 13, padding: '28px 0', textAlign: 'center' }}>Loading available slots...</div>
+        ) : dates.length === 0 ? (
+          <div style={{ color: '#F87171', fontSize: 13, padding: '28px 0', textAlign: 'center' }}>No available slots right now.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {dates.map(([date, slots]) => (
+              <div key={date}>
+                <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.12em', color: '#777', marginBottom: 8 }}>
+                  {new Date(date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8 }}>
+                  {slots.map(slot => {
+                    const selected = selectedValue === slot.value
+                    return (
+                      <button
+                        key={slot.value}
+                        type="button"
+                        onClick={() => setSchedule({ ...schedule, date: slot.date, time: slot.time })}
+                        style={{
+                          minHeight: 50,
+                          borderRadius: 10,
+                          border: `1.5px solid ${selected ? '#FFD200' : '#3A3A3A'}`,
+                          background: selected ? 'rgba(255,210,0,.12)' : '#222',
+                          color: selected ? '#FFD200' : '#CFCFCF',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          padding: '10px 12px',
+                          fontFamily: 'var(--font-cond)',
+                          fontWeight: 700,
+                          letterSpacing: '.06em',
+                        }}
+                      >
+                        <span style={{ display: 'block', fontSize: 14 }}>{displayTime(slot.time)}</span>
+                        {slot.remaining > 1 && <span style={{ display: 'block', fontSize: 10, color: '#777', marginTop: 2 }}>{slot.remaining} slots left</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+        )}
+      </div>
+        {/* Time — full width horizontal wrap */}
     </div>
   )
 }
 
 /* ─── Step 5 ─── */
-function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading, refNo }) {
-  const list = SERVICES[vehicle.tier] || []
+function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading, refNo, submitError, serviceCatalog }) {
+  const list = serviceCatalog[vehicle.tier] || []
   const selectedServices = services.map(name => {
     const s = list.find(x => x.name === name)
-    return { name, price: s ? s.price : 0, cat: s ? s.cat : '' }
+    return { name, price: s ? s.price : 0, cat: s ? serviceCategory(s) : '', has_travel_fee: s ? serviceUsesTravelFee(s) : false }
   })
   const serviceTotal = selectedServices.reduce((sum, s) => sum + s.price, 0)
   const area         = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
-  const hasWash      = selectedServices.some(s => s.cat === 'Wash')
-  const travelFee    = hasWash && area && area.fee !== 'FREE' ? parseInt(area.fee.replace('₱', '')) || 0 : 0
+  const hasTravelFee = selectedServices.some(s => s.has_travel_fee)
+  const travelFee    = hasTravelFee && area && area.fee !== 'FREE' ? parseInt(area.fee.replace(/[^0-9]/g, '')) || 0 : 0
   const tierName     = TIERS.find(t => t.id === vehicle.tier)?.name || ''
   const fmtDate      = schedule.date ? new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''
 
@@ -561,7 +574,7 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
         <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#FFD200', letterSpacing: '.1em' }}>
           {refNo || '—'}
         </div>
-        <div style={{ marginTop: 12, fontSize: 13, color: '#CFCFCF' }}>{vehicle.brand} {vehicle.model} · {fmtDate} · {schedule.time}</div>
+        <div style={{ marginTop: 12, fontSize: 13, color: '#CFCFCF' }}>{vehicle.brand} {vehicle.model} · {fmtDate} · {displayTime(schedule.time)}</div>
       </div>
       <Link href="/" style={{
         display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -624,9 +637,14 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
           <div style={{ background: '#1A1A1A', border: '1px solid #3A3A3A', borderRadius: 12, padding: 20 }}>
             <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#777', marginBottom: 8 }}>ISKEDYUL</div>
             <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 600, fontSize: 14, color: '#FFFFFF' }}>{fmtDate}</div>
-            <div style={{ fontSize: 12, color: '#FFD200', marginTop: 4, fontWeight: 700 }}>{schedule.time}</div>
+            <div style={{ fontSize: 12, color: '#FFD200', marginTop: 4, fontWeight: 700 }}>{displayTime(schedule.time)}</div>
           </div>
         </div>
+        {submitError && (
+          <div style={{ padding: '12px 16px', background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, color: '#F87171', fontSize: 13 }}>
+            {submitError}
+          </div>
+        )}
         <button onClick={onSubmit} disabled={loading} style={{
           width: '100%', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 8,
           background: loading ? '#3A3A3A' : '#FFD200', color: loading ? '#777' : '#0B0B0B', border: 'none',
@@ -654,6 +672,7 @@ export default function BookingWizard() {
   const [loading,   setLoading]   = useState(false)
   const [errors,    setErrors]    = useState({})
   const [refNo,     setRefNo]     = useState('')
+  const [submitError, setSubmitError] = useState('')
   const topRef = useRef(null)
 
   const [vehicle,       setVehicle]       = useState({ brand: '', model: '', year: '', plate: '', tier: '' })
@@ -661,6 +680,9 @@ export default function BookingWizard() {
   const [location,      setLocation]      = useState({ barangay: '', city: '', landmark: '', instructions: '' })
   const [schedule,      setSchedule]      = useState({ date: '', time: '' })
   const [savedVehicles, setSavedVehicles] = useState([])
+  const [serviceCatalog, setServiceCatalog] = useState(SERVICES)
+  const [availableSlots, setAvailableSlots] = useState([])
+  const [loadingAvailability, setLoadingAvailability] = useState(true)
 
   useEffect(() => {
     const supabase = createClient()
@@ -670,6 +692,35 @@ export default function BookingWizard() {
         if (data?.length) setSavedVehicles(data)
       })
     })
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('services')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => {
+        if (data?.length) setServiceCatalog(buildServiceCatalog(data))
+      })
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    setLoadingAvailability(true)
+    fetch('/api/public/availability')
+      .then(res => res.json())
+      .then(data => {
+        if (alive) setAvailableSlots(data.slots || [])
+      })
+      .catch(() => {
+        if (alive) setAvailableSlots([])
+      })
+      .finally(() => {
+        if (alive) setLoadingAvailability(false)
+      })
+    return () => { alive = false }
   }, [])
 
   // Pre-fill from ?rebook=<booking_id>
@@ -685,12 +736,28 @@ export default function BookingWizard() {
       .then(({ data }) => {
         if (!data) return
         const v = data.vehicles
-        if (v) setVehicle({ brand: v.make || '', model: v.model || '', year: '', plate: v.plate || '', tier: v.tier || '', savedId: v.id })
+        if (v) setVehicle({ brand: v.make || '', model: v.model || '', year: '', plate: v.plate || '', tier: v.tier || '', savedId: data.vehicle_id })
         const svcNames = (data.booking_services || []).map(s => s.service_name)
         if (svcNames.length) setServices(svcNames)
         if (data.barangay || data.city) setLocation(l => ({ ...l, barangay: data.barangay || '', city: data.city || '' }))
       })
   }, [searchParams])
+
+  useEffect(() => {
+    const slug = searchParams.get('service')
+    if (!slug || !vehicle.tier) return
+    const svc = (serviceCatalog[vehicle.tier] || []).find(item => item.slug === slug)
+    if (svc) setServices(prev => prev.includes(svc.name) ? prev : [svc.name])
+  }, [searchParams, serviceCatalog, vehicle.tier])
+
+  useEffect(() => {
+    if (searchParams.get('nextMonth') !== '1' || schedule.date || !availableSlots.length) return
+    const target = new Date()
+    target.setMonth(target.getMonth() + 1)
+    const targetIso = target.toISOString().slice(0, 10)
+    const slot = availableSlots.find(item => item.date >= targetIso) || availableSlots[0]
+    if (slot) setSchedule({ date: slot.date, time: slot.time })
+  }, [availableSlots, schedule.date, searchParams])
 
   const scrollTop = () => topRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
 
@@ -716,20 +783,24 @@ export default function BookingWizard() {
 
   const submit = async () => {
     setLoading(true)
+    setSubmitError('')
     try {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      const list = SERVICES[vehicle.tier] || []
+      const list = serviceCatalog[vehicle.tier] || []
       const area = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
-      const hasWash   = services.some(name => (list.find(x => x.name === name)?.cat) === 'Wash')
-      const travelFee = hasWash && area && area.fee !== 'FREE' ? parseInt(area.fee.replace('₱', '')) || 0 : 0
+      const hasTravelFee = services.some(name => {
+        const svc = list.find(x => x.name === name)
+        return svc ? serviceUsesTravelFee(svc) : false
+      })
+      const travelFee = hasTravelFee && area && area.fee !== 'FREE' ? parseInt(area.fee.replace(/[^0-9]/g, '')) || 0 : 0
       const serviceTotal = services.reduce((sum, name) => {
         const s = list.find(x => x.name === name)
         return sum + (s ? s.price : 0)
       }, 0)
       const selectedServices = services.map(name => {
         const s = list.find(x => x.name === name)
-        return { name, price: s?.price ?? 0 }
+        return { id: s?.id, name, price: s?.price ?? 0 }
       })
 
       const res  = await fetch('/api/bookings', {
@@ -748,19 +819,21 @@ export default function BookingWizard() {
           landmarks:      location.landmark || null,
           notes:          location.instructions || null,
           scheduled_date: schedule.date,
-          scheduled_time: schedule.time,
+          scheduled_time: normalizeTime(schedule.time),
           travel_fee:     travelFee,
           subtotal:       serviceTotal,
           total:          serviceTotal + travelFee,
         }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Booking could not be submitted.')
       if (data.reference_no) setRefNo(data.reference_no)
-    } catch (_) {
-      // show success regardless — booking likely saved
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(err.message || 'Booking could not be submitted.')
+      setErrors({ submit: true })
     }
     setLoading(false)
-    setSubmitted(true)
     scrollTop()
   }
 
@@ -774,10 +847,10 @@ export default function BookingWizard() {
   const content = () => {
     switch (step) {
       case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} savedVehicles={savedVehicles} />
-      case 2: return <Step2 vehicle={vehicle} services={services} setServices={setServices} errors={errors} />
-      case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} />
-      case 4: return <Step4 schedule={schedule} setSchedule={setSchedule} errors={errors} />
-      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} refNo={refNo} />
+      case 2: return <Step2 vehicle={vehicle} services={services} setServices={setServices} errors={errors} serviceCatalog={serviceCatalog} />
+      case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} serviceCatalog={serviceCatalog} />
+      case 4: return <Step4 schedule={schedule} setSchedule={setSchedule} errors={errors} availableSlots={availableSlots} loadingAvailability={loadingAvailability} />
+      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} refNo={refNo} submitError={submitError} serviceCatalog={serviceCatalog} />
       default: return null
     }
   }

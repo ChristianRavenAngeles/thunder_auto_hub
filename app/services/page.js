@@ -19,7 +19,7 @@ export default async function ServicesPage() {
     return acc
   }, {})
 
-  const catLabels = { wash: 'Wash Services', detailing: 'Detailing', coating: 'Coating', package: 'Packages' }
+  const catLabels = { wash: 'Wash Services', detailing: 'Detailing', coating: 'Coating', maintenance: 'Maintenance' }
 
   return (
     <>
@@ -45,9 +45,9 @@ export default async function ServicesPage() {
                     {s.description && <p className="text-sm text-[var(--text-muted)] mb-3 flex-1">{s.description}</p>}
 
                     {/* Price tiers */}
-                    {s.price_small || s.base_price ? (
+                    {s.price_s || s.price_m || s.price_l || s.price_xl ? (
                       <div className="grid grid-cols-4 gap-1 mb-4">
-                        {[['S', s.price_small], ['M', s.price_medium], ['L', s.price_large], ['XL', s.price_xlarge]].map(([tier, price]) =>
+                        {[['S', s.price_s], ['M', s.price_m], ['L', s.price_l], ['XL', s.price_xl]].map(([tier, price]) =>
                           price ? (
                             <div key={tier} className="bg-gray-50 rounded-lg p-2 text-center">
                               <p className="text-xs text-[var(--text-muted)]">{tier}</p>
@@ -55,18 +55,13 @@ export default async function ServicesPage() {
                             </div>
                           ) : null
                         )}
-                        {s.base_price && !s.price_small && (
-                          <div className="col-span-4 bg-gray-50 rounded-lg p-2 text-center">
-                            <p className="text-sm font-bold text-brand-600">{formatPrice(s.base_price)}</p>
-                          </div>
-                        )}
                       </div>
                     ) : null}
 
                     {/* Duration & inclusions */}
                     <div className="flex items-center gap-3 text-xs text-[var(--text-muted)] mb-4">
-                      {s.duration_minutes && (
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~{s.duration_minutes} min</span>
+                      {s.duration_hours && (
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> ~{s.duration_hours} hr</span>
                       )}
                     </div>
 

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 const TIERS = [
   { id: 'S',  label: 'SMALL',  sub: 'Hatchback / Subcompact' },
@@ -17,7 +18,7 @@ const TIER_DESC = {
   XL: 'Full-size SUV / Passenger Van',
 }
 
-const SERVICES = [
+const FALLBACK_SERVICES = [
   { name: 'Basic Wash',          cat: 'Wash',    S: 300,   M: 350,   L: 450,   XL: 550,   note: '+ travel fee' },
   { name: 'Basic Glow',          cat: 'Wash',    S: 450,   M: 500,   L: 650,   XL: 750,   note: '+ travel fee' },
   { name: 'Interior Detailing',  cat: 'Detail',  S: 1200,  M: 1400,  L: 1800,  XL: 2200  },
@@ -37,8 +38,36 @@ const CAT_COLORS = {
   Coating: { bg: '#22C55E',  text: '#0B0B0B' },
 }
 
+const DB_CAT_LABELS = { wash: 'Wash', detailing: 'Detail', coating: 'Coating', maintenance: 'Maint' }
+
+function mapDbServices(rows = []) {
+  return rows.map(s => ({
+    name: s.name,
+    cat: DB_CAT_LABELS[s.category] || 'Maint',
+    S: Number(s.price_s || 0),
+    M: Number(s.price_m || 0),
+    L: Number(s.price_l || 0),
+    XL: Number(s.price_xl || 0),
+    note: s.has_travel_fee ? '+ travel fee' : '',
+    highlight: s.category === 'coating',
+  }))
+}
+
 export default function PricingSection() {
   const [active, setActive] = useState('M')
+  const [services, setServices] = useState(FALLBACK_SERVICES)
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('services')
+      .select('*')
+      .eq('is_active', true)
+      .order('sort_order')
+      .then(({ data }) => {
+        if (data?.length) setServices(mapDbServices(data))
+      })
+  }, [])
 
   return (
     <section id="pricing" style={{ padding: 'clamp(64px, 10vw, 100px) 0', background: '#0B0B0B' }}>
@@ -80,7 +109,7 @@ export default function PricingSection() {
 
         {/* Price list */}
         <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {SERVICES.map(s => (
+          {services.map(s => (
             <div key={s.name} style={{
               display: 'flex', alignItems: 'center', flexWrap: 'wrap', padding: '18px clamp(16px, 4vw, 24px)',
               background: s.highlight ? 'linear-gradient(90deg, rgba(255,210,0,.06), rgba(255,210,0,.02))' : '#1A1A1A',
