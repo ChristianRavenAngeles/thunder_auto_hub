@@ -8,12 +8,24 @@ import { ArrowLeft, Car, CreditCard, MapPin, User } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, BOOKING_STATUS_LABELS, PAYMENT_STATUS_LABELS } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
+import { buildBookingTimeline } from '@/lib/bookingTimeline'
+import { getBookingSlaAlerts } from '@/lib/sla'
 
-const STATUS_ORDER = ['pending', 'confirmed', 'rescheduled', 'in_progress', 'completed', 'cancelled', 'no_show']
+const STATUS_ORDER = ['pending', 'confirmed', 'assigned', 'on_the_way', 'rescheduled', 'in_progress', 'completed', 'cancelled', 'no_show']
+const SERVICE_FLAG_OPTIONS = [
+  'Strict gate access',
+  'Pet present',
+  'Requires water source',
+  'Requires power outlet',
+  'Tight parking',
+  'Call before arrival',
+]
 
 const STATUS_COLOR = {
   pending:     'badge-gray',
   confirmed:   'badge-teal',
+  assigned:    'badge-teal',
+  on_the_way:  'badge-gold',
   rescheduled: 'badge-gold',
   in_progress: 'badge-gold',
   completed:   'badge-green',
@@ -29,22 +41,23 @@ export default function BookingDetailPage() {
   const [booking, setBooking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [currentUserId, setCurrentUserId] = useState(null)
   const [newStatus, setNewStatus] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payMethod, setPayMethod] = useState('gcash')
   const [payNote, setPayNote] = useState('')
+  const [etaMinutes, setEtaMinutes] = useState('')
+  const [internalNotes, setInternalNotes] = useState('')
+  const [serviceFlags, setServiceFlags] = useState([])
+  const [savingInternal, setSavingInternal] = useState(false)
+  const [workflow, setWorkflow] = useState(null)
 
   useEffect(() => { load() }, [id])
 
   async function load() {
     setLoading(true)
-    const { data: userData } = await supabase.auth.getUser()
-    setCurrentUserId(userData.user?.id || null)
-
     const { data } = await supabase
       .from('bookings')
-      .select(`*, profiles(full_name, phone, email), vehicles(make, model, year, plate, color, tier), booking_services(*), payments(*), photos(*), booking_status_history(*)`)
+      .select(`*, profiles(full_name, phone, email), vehicles(make, model, year, plate, color, tier), booking_services(*), payments(*), photos(*), booking_status_history(*), reviews(id, rating, created_at)`)
       .eq('id', id)
       .single()
 
@@ -55,35 +68,34 @@ export default function BookingDetailPage() {
 
     setBooking(data)
     setNewStatus(data.status)
+    setEtaMinutes(data.eta_minutes ? String(data.eta_minutes) : '')
+    setInternalNotes(data.admin_notes || '')
+    setServiceFlags(data.service_flags || [])
+    const workflowResponse = await fetch(`/api/rider/bookings/${id}`, { cache: 'no-store' })
+    const workflowPayload = await workflowResponse.json().catch(() => ({}))
+    setWorkflow(workflowResponse.ok ? workflowPayload : null)
     setLoading(false)
   }
 
   async function saveStatus() {
     if (newStatus === booking.status) return
     setSaving(true)
+    const response = await fetch(`/api/admin/bookings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_status',
+        status: newStatus,
+        eta_minutes: newStatus === 'on_the_way' ? Number(etaMinutes || 0) : null,
+      }),
+    })
 
-    const { error } = await supabase.from('bookings').update({
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-
-    if (error) {
-      toast.error('Failed to update.')
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      toast.error(payload.error || 'Failed to update.')
       setSaving(false)
       return
     }
-
-    await supabase.from('booking_status_history').insert({
-      booking_id: id,
-      changed_by: currentUserId,
-      actor_role: 'admin',
-      action: 'status_updated_by_admin',
-      from_status: booking.status,
-      to_status: newStatus,
-      from_scheduled_date: booking.scheduled_date,
-      from_scheduled_time: booking.scheduled_time,
-      note: 'Status updated from admin booking detail.',
-    })
 
     toast.success('Booking updated.')
     await load()
@@ -94,49 +106,48 @@ export default function BookingDetailPage() {
     const amt = parseFloat(payAmount)
     if (!amt || amt <= 0) return toast.error('Enter a valid amount.')
     setSaving(true)
-
-    const { error } = await supabase.from('payments').insert({
-      booking_id: id,
-      amount: amt,
-      method: payMethod,
-      status: 'paid',
-      notes: payNote || null,
-      is_deposit: false,
-      confirmed_by: currentUserId,
-      confirmed_at: new Date().toISOString(),
+    const response = await fetch(`/api/admin/bookings/${id}/payments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: amt, method: payMethod, note: payNote }),
     })
 
-    if (error) {
-      toast.error('Failed to record payment.')
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      toast.error(payload.error || 'Failed to record payment.')
       setSaving(false)
       return
     }
-
-    const totalPaid = (booking.payments || [])
-      .filter(p => p.status === 'paid')
-      .reduce((s, p) => s + Number(p.amount || 0), 0) + amt
-    const isFull = totalPaid >= Number(booking.total_price || 0)
-
-    await supabase.from('bookings').update({
-      payment_status: isFull ? 'paid' : 'partial',
-      updated_at: new Date().toISOString(),
-    }).eq('id', id)
-
-    await supabase.from('booking_status_history').insert({
-      booking_id: id,
-      changed_by: currentUserId,
-      actor_role: 'admin',
-      action: 'payment_recorded',
-      from_status: booking.status,
-      to_status: booking.status,
-      note: `Payment recorded: ${formatPrice(amt)} via ${payMethod.replace('_', ' ')}.`,
-    })
 
     toast.success('Payment recorded.')
     setPayAmount('')
     setPayNote('')
     await load()
     setSaving(false)
+  }
+
+  async function saveInternalDetails() {
+    setSavingInternal(true)
+    const response = await fetch(`/api/admin/bookings/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_internal',
+        admin_notes: internalNotes,
+        service_flags: serviceFlags,
+      }),
+    })
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}))
+      toast.error(payload.error || 'Could not save internal details.')
+      setSavingInternal(false)
+      return
+    }
+
+    toast.success('Internal notes updated.')
+    await load()
+    setSavingInternal(false)
   }
 
   if (loading) return (
@@ -157,6 +168,8 @@ export default function BookingDetailPage() {
   const totalPaid = (booking.payments || []).filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount || 0), 0)
   const balance = Number(booking.total_price || 0) - totalPaid
   const history = [...(booking.booking_status_history || [])].sort((a, z) => new Date(z.created_at) - new Date(a.created_at))
+  const timeline = buildBookingTimeline(booking.status, { hasReview: Boolean(booking.reviews?.length) })
+  const slaAlerts = getBookingSlaAlerts(booking)
 
   return (
     <div className="p-6 max-w-4xl">
@@ -176,6 +189,18 @@ export default function BookingDetailPage() {
 
       <div className="card p-5 mb-6 border-brand-100">
         <h3 className="font-semibold text-thunder-dark mb-4">Admin Actions</h3>
+        {slaAlerts.length > 0 && (
+          <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-amber-700 mb-2">SLA Alerts</p>
+            <div className="flex flex-wrap gap-2">
+              {slaAlerts.map(alert => (
+                <span key={alert.key} className={`${alert.severity === 'high' ? 'badge-red' : 'badge-gold'} text-xs`}>
+                  {alert.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">Status</label>
@@ -189,6 +214,33 @@ export default function BookingDetailPage() {
             <button onClick={saveStatus} disabled={saving || newStatus === booking.status} className="btn-primary w-full">
               {saving ? 'Saving...' : 'Save Status'}
             </button>
+          </div>
+        </div>
+        {newStatus === 'on_the_way' && (
+          <div className="mt-4">
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">ETA Minutes</label>
+            <input value={etaMinutes} onChange={e => setEtaMinutes(e.target.value)} className="input w-full text-sm max-w-xs" placeholder="30" />
+          </div>
+        )}
+
+        <div className="mt-4 rounded-xl border border-[var(--border)] bg-[var(--bg-2)] p-3">
+          <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Timeline</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-7 gap-2">
+            {timeline.map(step => (
+              <div key={step.key} className={`rounded-lg border px-2 py-2 text-center ${
+                step.state === 'done'
+                  ? 'border-green-200 bg-green-50'
+                  : step.state === 'current'
+                    ? 'border-brand-200 bg-brand-50'
+                    : 'border-[var(--border)] bg-white'
+              }`}>
+                <p className={`text-[11px] font-semibold ${
+                  step.state === 'done' ? 'text-green-700' : step.state === 'current' ? 'text-brand-700' : 'text-[var(--text-muted)]'
+                }`}>
+                  {step.label}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -218,6 +270,94 @@ export default function BookingDetailPage() {
           </div>
         </div>
       </div>
+
+      <div className="card p-5 mb-6">
+        <h3 className="font-semibold text-thunder-dark mb-4">Internal Notes and Flags</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_.9fr] gap-5">
+          <div>
+            <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">Admin Notes</label>
+            <textarea
+              value={internalNotes}
+              onChange={e => setInternalNotes(e.target.value)}
+              className="input resize-none text-sm"
+              rows={5}
+              placeholder="Arrival instructions, customer preferences, hazards, or team handoff notes"
+            />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-[var(--text-muted)] mb-2 uppercase tracking-wider">Service Flags</p>
+            <div className="space-y-2">
+              {SERVICE_FLAG_OPTIONS.map(flag => {
+                const checked = serviceFlags.includes(flag)
+                return (
+                  <label key={flag} className="flex items-center gap-2 text-sm text-thunder-dark">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => setServiceFlags(prev => checked ? prev.filter(item => item !== flag) : [...prev, flag])}
+                    />
+                    <span>{flag}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4">
+          <button onClick={saveInternalDetails} disabled={savingInternal} className="btn-primary">
+            {savingInternal ? 'Saving...' : 'Save Internal Details'}
+          </button>
+        </div>
+      </div>
+
+      {workflow && (
+        <div className="card p-5 mb-6">
+          <h3 className="font-semibold text-thunder-dark mb-4">Field Workflow</h3>
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+            <div className="rounded-xl border border-[var(--border)] p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Checklist</p>
+              <div className="space-y-2">
+                {(workflow.checklist || []).map(item => (
+                  <div key={item.id} className="flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={item.is_done} readOnly />
+                    <span className={item.is_done ? 'line-through text-[var(--text-muted)]' : 'text-thunder-dark'}>{item.item}</span>
+                  </div>
+                ))}
+                {!(workflow.checklist || []).length && <p className="text-sm text-[var(--text-muted)]">No checklist yet.</p>}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Supplies Used</p>
+              <div className="space-y-2">
+                {(workflow.usage || []).map(item => (
+                  <div key={item.id} className="flex justify-between gap-3 text-sm">
+                    <div>
+                      <p className="font-medium text-thunder-dark">{item.supply?.name || 'Supply'}</p>
+                      <p className="text-xs text-[var(--text-muted)]">{item.notes || 'Logged on booking'}</p>
+                    </div>
+                    <span className="text-brand-600 font-semibold">{item.quantity} {item.supply?.unit}</span>
+                  </div>
+                ))}
+                {!(workflow.usage || []).length && <p className="text-sm text-[var(--text-muted)]">No supply usage recorded.</p>}
+              </div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)] p-4">
+              <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Technician Notes</p>
+              <div className="space-y-2">
+                {(workflow.notes || []).map(item => (
+                  <div key={item.id} className="rounded-lg bg-[var(--bg-2)] p-3 text-sm">
+                    <span className={`${item.severity === 'critical' ? 'badge-red' : item.severity === 'warning' ? 'badge-gold' : 'badge-teal'} text-[10px]`}>
+                      {item.severity}
+                    </span>
+                    <p className="mt-2 text-[var(--text-2)]">{item.note}</p>
+                  </div>
+                ))}
+                {!(workflow.notes || []).length && <p className="text-sm text-[var(--text-muted)]">No technician notes yet.</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
         <div className="card p-5">
@@ -335,7 +475,7 @@ export default function BookingDetailPage() {
 
       {booking.notes && (
         <div className="card p-5 mt-5">
-          <h3 className="font-semibold text-thunder-dark mb-2">Notes</h3>
+          <h3 className="font-semibold text-thunder-dark mb-2">Customer Notes</h3>
           <p className="text-sm text-[var(--text-2)]">{booking.notes}</p>
         </div>
       )}

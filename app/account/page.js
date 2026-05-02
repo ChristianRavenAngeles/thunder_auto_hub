@@ -1,8 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
-import { Calendar, Car, Crown, Star, ArrowRight, Plus, Clock, RefreshCw, Wrench } from 'lucide-react'
+import { Calendar, Car, Crown, Star, ArrowRight, Plus, Clock, RefreshCw, Wrench, Save } from 'lucide-react'
 import { formatDate, BOOKING_STATUS_LABELS } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
+import { inferRecommendedService } from '@/lib/serviceRecommendations'
 
 export default async function AccountDashboard() {
   const supabase = await createClient()
@@ -13,11 +14,13 @@ export default async function AccountDashboard() {
     { data: bookings },
     { data: vehicles },
     { data: membership },
+    { data: savedPackages },
   ] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('bookings').select('*, booking_services(service_name, services(category, slug)), vehicles(make, model)').eq('user_id', user.id).order('created_at', { ascending: false }).limit(12),
     supabase.from('vehicles').select('*').eq('user_id', user.id).limit(3),
     supabase.from('memberships').select('*, membership_plans(name)').eq('user_id', user.id).eq('status', 'active').order('created_at', { ascending: false }).limit(1),
+    supabase.from('saved_service_packages').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(4),
   ])
 
   const activeBooking = bookings?.find(b => ['pending', 'confirmed', 'rescheduled', 'in_progress'].includes(b.status))
@@ -82,6 +85,25 @@ export default async function AccountDashboard() {
                 <item.icon className="w-5 h-5 text-brand-500 mb-3" />
                 <p className="text-sm font-semibold text-thunder-dark">{item.title}</p>
                 <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{item.body}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(savedPackages || []).length > 0 && (
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-bold font-display text-thunder-dark">Saved Service Packages</h2>
+            <Link href="/account/bookings" className="text-xs text-brand-500 hover:underline">Create more</Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(savedPackages || []).map(item => (
+              <Link key={item.id} href={`/book?package=${item.id}`} className="rounded-xl border border-[var(--border)] bg-[var(--bg-2)] p-4 hover:bg-brand-50 transition-colors">
+                <Save className="w-5 h-5 text-brand-500 mb-3" />
+                <p className="text-sm font-semibold text-thunder-dark">{item.name}</p>
+                <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">{(item.service_names || []).join(', ')}</p>
+                <p className="text-[11px] text-[var(--text-muted)] mt-2">Tier: {item.vehicle_tier || 'Any'}</p>
               </Link>
             ))}
           </div>
@@ -191,11 +213,12 @@ function buildRebookSuggestions(bookings) {
   const vehicleName = latest.vehicles ? `${latest.vehicles.make} ${latest.vehicles.model}` : 'your vehicle'
   const category = service?.services?.category || ''
 
-  const maintenanceSlug =
-    category === 'coating' ? 'car-care-deluxe' :
-    category === 'detailing' ? 'basic-glow' :
-    category === 'wash' ? 'interior-detailing' :
-    'basic-wash'
+  const recommendation = inferRecommendedService(
+    (latest.booking_services || []).map(service => ({
+      service_name: service.service_name,
+      category: service.services?.category,
+    }))
+  )
 
   return [
     {
@@ -213,7 +236,7 @@ function buildRebookSuggestions(bookings) {
     {
       title: 'Recommended maintenance',
       body: 'A follow-up service based on your recent vehicle care history.',
-      href: `/book?rebook=${latest.id}&service=${maintenanceSlug}`,
+      href: `/book?rebook=${latest.id}&service=${recommendation.slug}`,
       icon: Wrench,
     },
   ]

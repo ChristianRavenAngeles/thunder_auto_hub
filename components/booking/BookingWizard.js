@@ -1,10 +1,11 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { displayTime, normalizeTime } from '@/lib/availability'
+import { findServiceAreaMatch, formatDistanceLabel, formatTravelFeeLabel, getTravelFeeForLocation } from '@/lib/serviceAreas'
 
 /* ─── static data ─── */
 const TIERS = [
@@ -65,18 +66,13 @@ const SERVICES = {
   ],
 }
 
-const SERVICE_AREA = [
-  { city: 'Arayat',      km: '0 km',   fee: 'FREE' },
-  { city: 'San Luis',    km: '8 km',   fee: '₱150' },
-  { city: 'Mexico',      km: '12 km',  fee: '₱200' },
-  { city: 'Magalang',    km: '14 km',  fee: '₱200' },
-  { city: 'Candaba',     km: '15 km',  fee: '₱200' },
-  { city: 'Sta. Ana',    km: '16 km',  fee: '₱250' },
-  { city: 'San Simon',   km: '18 km',  fee: '₱250' },
-  { city: 'Minalin',     km: '20 km',  fee: '₱300' },
-  { city: 'Guagua',      km: '22 km',  fee: '₱300' },
-  { city: 'Bacolor',     km: '24 km',  fee: '₱350' },
-  { city: 'Angeles',     km: '25 km',  fee: '₱350' },
+const FALLBACK_SERVICE_AREAS = [
+  { id: 'arayat', barangay: 'Arayat', city: 'Arayat', distance_km: 0, travel_fee: 0, is_serviceable: true },
+  { id: 'san-luis', barangay: 'Poblacion', city: 'San Luis', distance_km: 12, travel_fee: 150, is_serviceable: true },
+  { id: 'mexico', barangay: 'Poblacion', city: 'Mexico', distance_km: 15, travel_fee: 170, is_serviceable: true },
+  { id: 'magalang', barangay: 'Poblacion', city: 'Magalang', distance_km: 16, travel_fee: 170, is_serviceable: true },
+  { id: 'candaba', barangay: 'Poblacion', city: 'Candaba', distance_km: 18, travel_fee: 170, is_serviceable: true },
+  { id: 'sta-ana', barangay: 'Poblacion', city: 'Sta. Ana', distance_km: 21, travel_fee: 200, is_serviceable: true },
 ]
 
 const STEPS = [
@@ -86,6 +82,26 @@ const STEPS = [
   { id: 4, icon: '📅', label: 'Iskedyul' },
   { id: 5, icon: '✓',  label: 'Kumpirmasyon' },
 ]
+
+// Hardcoded fallback used only if the API is unavailable
+const FALLBACK_MODEL_MAP = {
+  mirage: 'S', wigo: 'S', vios: 'S', city: 'S', brio: 'S', jazz: 'S', swift: 'S',
+  civic: 'M', corolla: 'M', altis: 'M', innova: 'M', xpander: 'M', avanza: 'M',
+  'cr-v': 'M', crv: 'M', 'hr-v': 'M', hrv: 'M', rav4: 'M', tucson: 'M',
+  fortuner: 'L', montero: 'L', 'montero sport': 'L', hilux: 'L', ranger: 'L',
+  navara: 'L', triton: 'L', 'd-max': 'L', dmax: 'L', mux: 'L', 'mu-x': 'L',
+  'land cruiser': 'XL', hiace: 'XL', urvan: 'XL', patrol: 'XL', carnival: 'XL',
+}
+
+function detectTierFromMap(map, model) {
+  if (!model) return ''
+  const key = model.trim().toLowerCase()
+  if (map[key]) return map[key]
+  for (const [k, tier] of Object.entries(map)) {
+    if (key.includes(k) || k.includes(key)) return tier
+  }
+  return ''
+}
 
 const CAT_COLORS = { Wash: '#FFD200', Detail: '#A78BFA', Detailing: '#A78BFA', Coating: '#22C55E', Maintenance: '#60A5FA' }
 const DB_CATEGORY_LABELS = { wash: 'Wash', detailing: 'Detailing', coating: 'Coating', maintenance: 'Maintenance' }
@@ -198,13 +214,65 @@ const inputStyle = (error) => ({
 })
 
 /* ─── Step 1 ─── */
-function Step1({ vehicle, setVehicle, errors, savedVehicles }) {
+function Step1({ vehicle, setVehicle, errors, savedVehicles, savedPackages, vehicleModelMap, unknownModel, setUnknownModel }) {
+  const [tierHint, setTierHint] = useState('')
+
+  function handleFieldChange(key, value) {
+    const updated = { ...vehicle, [key]: key === 'plate' ? value.toUpperCase() : value }
+
+    if (key === 'model') {
+      setUnknownModel(false)
+      setTierHint('')
+
+      const fromDB = detectTierFromMap(vehicleModelMap, value)
+      if (fromDB) {
+        updated.tier = fromDB
+        setTierHint(fromDB)
+      } else if (value.trim().length >= 3) {
+        updated.tier = ''
+        setUnknownModel(true)
+      }
+    }
+
+    setVehicle(updated)
+  }
+
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
       <div style={{ marginBottom: 28 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>SASAKYAN</h2>
         <p style={{ fontSize: 14, color: '#CFCFCF' }}>Ilagay ang detalye ng inyong sasakyan para makuha ang tamang presyo.</p>
       </div>
+
+      {savedPackages?.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <FieldLabel>SAVED PACKAGES</FieldLabel>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {savedPackages.slice(0, 4).map(pkg => (
+              <Link
+                key={pkg.id}
+                href={`/book?package=${pkg.id}`}
+                style={{
+                  display: 'block',
+                  padding: '10px 14px',
+                  borderRadius: 10,
+                  border: '1.5px solid #3A3A3A',
+                  background: '#1A1A1A',
+                  textDecoration: 'none',
+                  minWidth: 180,
+                }}
+              >
+                <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.04em', color: '#FFD200' }}>
+                  {pkg.name}
+                </div>
+                <div style={{ fontSize: 11, color: '#CFCFCF', marginTop: 3 }}>
+                  {(pkg.service_names || []).slice(0, 2).join(', ')}
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {savedVehicles?.length > 0 && (
         <div style={{ marginBottom: 24 }}>
@@ -254,7 +322,7 @@ function Step1({ vehicle, setVehicle, errors, savedVehicles }) {
               placeholder={f.placeholder}
               value={vehicle[f.key]}
               maxLength={f.maxLength}
-              onChange={e => setVehicle({ ...vehicle, [f.key]: f.key === 'plate' ? e.target.value.toUpperCase() : e.target.value })}
+              onChange={e => handleFieldChange(f.key, e.target.value)}
               onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
               onBlur={e => e.target.style.borderColor = errors[f.key] ? 'rgba(248,113,113,.5)' : '#3A3A3A'}
             />
@@ -264,7 +332,34 @@ function Step1({ vehicle, setVehicle, errors, savedVehicles }) {
       </div>
 
       <div>
-        <FieldLabel required>Vehicle Size</FieldLabel>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <FieldLabel required>Vehicle Size</FieldLabel>
+          {tierHint && (
+            <span style={{ fontSize: 11, color: '#22C55E', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.08em', background: 'rgba(34,197,94,.1)', border: '1px solid rgba(34,197,94,.3)', borderRadius: 20, padding: '2px 10px' }}>
+              ✓ Auto-detected: {TIERS.find(t => t.id === tierHint)?.name}
+            </span>
+          )}
+        </div>
+
+        {unknownModel && (
+          <div style={{ padding: '16px 20px', background: 'rgba(251,191,36,.06)', border: '1px solid rgba(251,191,36,.3)', borderRadius: 12, marginBottom: 16 }}>
+            <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#FBbf24', marginBottom: 6 }}>
+              VEHICLE NOT YET IN OUR DATABASE
+            </div>
+            <p style={{ fontSize: 13, color: '#CFCFCF', lineHeight: 1.6, margin: '0 0 12px' }}>
+              We don&apos;t recognize <strong style={{ color: '#FFFFFF' }}>{vehicle.model}</strong> yet. Our admin will identify the correct size and add it for future customers.
+            </p>
+            <p style={{ fontSize: 13, color: '#CFCFCF', lineHeight: 1.6, margin: '0 0 12px' }}>
+              In the meantime, please <strong style={{ color: '#FBbf24' }}>manually select the vehicle size below</strong>, or contact us for help:
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <a href="https://m.me/ThunderAutoHub" target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'rgba(251,191,36,.15)', border: '1px solid rgba(251,191,36,.4)', borderRadius: 8, color: '#FBbf24', fontSize: 12, fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.08em', textDecoration: 'none' }}>
+                💬 Message Us on Facebook
+              </a>
+            </div>
+          </div>
+        )}
+
         {errors.tier && <div style={{ fontSize: 12, color: '#F87171', marginBottom: 8, fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{errors.tier}</div>}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 10 }}>
           {TIERS.map(t => (
@@ -375,17 +470,11 @@ function Step2({ vehicle, services, setServices, errors, serviceCatalog }) {
 }
 
 /* ─── Step 3 ─── */
-function Step3({ location, setLocation, errors, vehicle, services, serviceCatalog }) {
-  const [fee, setFee] = useState(null)
-
-  const checkCity = (city) => {
-    setLocation({ ...location, city })
-    const found = SERVICE_AREA.find(a => a.city.toLowerCase() === city.toLowerCase())
-    setFee(found || null)
-  }
-
+function Step3({ location, setLocation, errors, vehicle, services, serviceCatalog, serviceAreas }) {
   const hasTravelFee = (serviceCatalog[vehicle.tier] || [])
     .some(s => services.includes(s.name) && serviceUsesTravelFee(s))
+  const fee = findServiceAreaMatch(serviceAreas, location.barangay, location.city)
+  const citySuggestions = [...new Set((serviceAreas || []).map(area => area.city).filter(Boolean))]
 
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
@@ -413,13 +502,13 @@ function Step3({ location, setLocation, errors, vehicle, services, serviceCatalo
               style={inputStyle(errors.city)}
               placeholder="Arayat, San Luis, Mexico..."
               value={location.city}
-              onChange={e => checkCity(e.target.value)}
+              onChange={e => setLocation({ ...location, city: e.target.value })}
               list="city-suggestions"
               onFocus={e => e.target.style.borderColor = 'rgba(255,210,0,.5)'}
               onBlur={e => e.target.style.borderColor = errors.city ? 'rgba(248,113,113,.5)' : '#3A3A3A'}
             />
             <datalist id="city-suggestions">
-              {SERVICE_AREA.map(a => <option key={a.city} value={a.city} />)}
+              {citySuggestions.map(city => <option key={city} value={city} />)}
             </datalist>
             {fee && (
               <div style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)' }}>
@@ -456,9 +545,9 @@ function Step3({ location, setLocation, errors, vehicle, services, serviceCatalo
         <div style={{ padding: '16px 20px', background: 'rgba(34,197,94,.08)', border: '1px solid rgba(34,197,94,.25)', borderRadius: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.1em', color: '#22C55E', marginBottom: 2 }}>TRAVEL FEE — {fee.city}</div>
-            <div style={{ fontSize: 13, color: '#CFCFCF' }}>{fee.km} mula Arayat</div>
+            <div style={{ fontSize: 13, color: '#CFCFCF' }}>{formatDistanceLabel(fee.distance_km)} mula Arayat</div>
           </div>
-          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: fee.fee === 'FREE' ? '#22C55E' : '#FFD200' }}>{fee.fee}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: fee.travel_fee === 0 ? '#22C55E' : '#FFD200' }}>{formatTravelFeeLabel(fee.travel_fee)}</div>
         </div>
       )}
       {!fee && location.city && (
@@ -544,16 +633,21 @@ function Step4({ schedule, setSchedule, errors, availableSlots, loadingAvailabil
 }
 
 /* ─── Step 5 ─── */
-function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading, refNo, submitError, serviceCatalog }) {
+function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loading, refNo, submitError, serviceCatalog, serviceAreas }) {
+
   const list = serviceCatalog[vehicle.tier] || []
   const selectedServices = services.map(name => {
     const s = list.find(x => x.name === name)
     return { name, price: s ? s.price : 0, cat: s ? serviceCategory(s) : '', has_travel_fee: s ? serviceUsesTravelFee(s) : false }
   })
   const serviceTotal = selectedServices.reduce((sum, s) => sum + s.price, 0)
-  const area         = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
   const hasTravelFee = selectedServices.some(s => s.has_travel_fee)
-  const travelFee    = hasTravelFee && area && area.fee !== 'FREE' ? parseInt(area.fee.replace(/[^0-9]/g, '')) || 0 : 0
+  const { travelFee = 0 } = getTravelFeeForLocation({
+    serviceAreas,
+    barangay: location.barangay,
+    city: location.city,
+    hasTravelFee,
+  })
   const tierName     = TIERS.find(t => t.id === vehicle.tier)?.name || ''
   const fmtDate      = schedule.date ? new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''
 
@@ -640,6 +734,14 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
             <div style={{ fontSize: 12, color: '#FFD200', marginTop: 4, fontWeight: 700 }}>{displayTime(schedule.time)}</div>
           </div>
         </div>
+        {/* Deposit notice */}
+        <div style={{ background: 'rgba(255,210,0,.05)', border: '1px solid rgba(255,210,0,.2)', borderRadius: 12, padding: 20 }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontSize: 11, fontWeight: 700, letterSpacing: '.16em', color: '#FFD200', marginBottom: 6 }}>DEPOSITO — ₱100</div>
+          <p style={{ fontSize: 13, color: '#CFCFCF', lineHeight: 1.6, margin: 0 }}>
+            Pagkatapos mag-submit, dadalhin kayo sa payment page para mag-GCash ng <strong style={{ color: '#FFD200' }}>₱100 deposit</strong> at mag-upload ng screenshot para ma-confirm ang booking.
+          </p>
+        </div>
+
         {submitError && (
           <div style={{ padding: '12px 16px', background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, color: '#F87171', fontSize: 13 }}>
             {submitError}
@@ -667,6 +769,7 @@ function Step5({ vehicle, services, location, schedule, submitted, onSubmit, loa
 /* ─── Main wizard ─── */
 export default function BookingWizard() {
   const searchParams = useSearchParams()
+  const router       = useRouter()
   const [step,      setStep]      = useState(1)
   const [submitted, setSubmitted] = useState(false)
   const [loading,   setLoading]   = useState(false)
@@ -680,9 +783,21 @@ export default function BookingWizard() {
   const [location,      setLocation]      = useState({ barangay: '', city: '', landmark: '', instructions: '' })
   const [schedule,      setSchedule]      = useState({ date: '', time: '' })
   const [savedVehicles, setSavedVehicles] = useState([])
+  const [savedPackages, setSavedPackages] = useState([])
   const [serviceCatalog, setServiceCatalog] = useState(SERVICES)
+  const [serviceAreas, setServiceAreas] = useState(FALLBACK_SERVICE_AREAS)
   const [availableSlots, setAvailableSlots] = useState([])
   const [loadingAvailability, setLoadingAvailability] = useState(true)
+  const [vehicleModelMap, setVehicleModelMap] = useState(FALLBACK_MODEL_MAP)
+  const [unknownModel, setUnknownModel] = useState(false)
+
+  // Load DB model map on mount — stays fresh, replaces hardcoded fallback
+  useEffect(() => {
+    fetch('/api/public/vehicle-models')
+      .then(r => r.json())
+      .then(d => { if (d.models && Object.keys(d.models).length) setVehicleModelMap(d.models) })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const supabase = createClient()
@@ -690,6 +805,9 @@ export default function BookingWizard() {
       if (!user) return
       supabase.from('vehicles').select('id, make, model, year, plate, tier').eq('user_id', user.id).order('created_at').then(({ data }) => {
         if (data?.length) setSavedVehicles(data)
+      })
+      supabase.from('saved_service_packages').select('*').eq('user_id', user.id).order('updated_at', { ascending: false }).then(({ data }) => {
+        if (data?.length) setSavedPackages(data)
       })
     })
   }, [])
@@ -703,6 +821,19 @@ export default function BookingWizard() {
       .order('sort_order')
       .then(({ data }) => {
         if (data?.length) setServiceCatalog(buildServiceCatalog(data))
+      })
+  }, [])
+
+  useEffect(() => {
+    const supabase = createClient()
+    supabase
+      .from('service_areas')
+      .select('id, barangay, city, distance_km, travel_fee, is_serviceable')
+      .eq('is_serviceable', true)
+      .order('city')
+      .order('barangay')
+      .then(({ data }) => {
+        if (data?.length) setServiceAreas(data)
       })
   }, [])
 
@@ -740,6 +871,27 @@ export default function BookingWizard() {
         const svcNames = (data.booking_services || []).map(s => s.service_name)
         if (svcNames.length) setServices(svcNames)
         if (data.barangay || data.city) setLocation(l => ({ ...l, barangay: data.barangay || '', city: data.city || '' }))
+      })
+  }, [searchParams])
+
+  useEffect(() => {
+    const packageId = searchParams.get('package')
+    if (!packageId) return
+    const supabase = createClient()
+    supabase
+      .from('saved_service_packages')
+      .select('*')
+      .eq('id', packageId)
+      .single()
+      .then(({ data }) => {
+        if (!data) return
+        if (data.vehicle_tier) {
+          setVehicle(prev => ({ ...prev, tier: prev.tier || data.vehicle_tier }))
+        }
+        if (data.service_names?.length) {
+          setServices(data.service_names)
+          setStep(2)
+        }
       })
   }, [searchParams])
 
@@ -788,12 +940,17 @@ export default function BookingWizard() {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       const list = serviceCatalog[vehicle.tier] || []
-      const area = SERVICE_AREA.find(a => a.city.toLowerCase() === location.city.toLowerCase())
       const hasTravelFee = services.some(name => {
         const svc = list.find(x => x.name === name)
         return svc ? serviceUsesTravelFee(svc) : false
       })
-      const travelFee = hasTravelFee && area && area.fee !== 'FREE' ? parseInt(area.fee.replace(/[^0-9]/g, '')) || 0 : 0
+      const { travelFee, serviceable } = getTravelFeeForLocation({
+        serviceAreas,
+        barangay: location.barangay,
+        city: location.city,
+        hasTravelFee,
+      })
+      if (!serviceable) throw new Error('Selected location is outside the serviceable area.')
       const serviceTotal = services.reduce((sum, name) => {
         const s = list.find(x => x.name === name)
         return sum + (s ? s.price : 0)
@@ -818,17 +975,19 @@ export default function BookingWizard() {
           city:           location.city,
           landmarks:      location.landmark || null,
           notes:          location.instructions || null,
-          scheduled_date: schedule.date,
-          scheduled_time: normalizeTime(schedule.time),
-          travel_fee:     travelFee,
-          subtotal:       serviceTotal,
-          total:          serviceTotal + travelFee,
+          scheduled_date:    schedule.date,
+          scheduled_time:    normalizeTime(schedule.time),
+          travel_fee:        travelFee,
+          subtotal:          serviceTotal,
+          total:             serviceTotal + travelFee,
+          deposit_screenshot: null,
         }),
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Booking could not be submitted.')
       if (data.reference_no) setRefNo(data.reference_no)
       setSubmitted(true)
+      router.push(`/payment/${data.booking_id}`)
     } catch (err) {
       setSubmitError(err.message || 'Booking could not be submitted.')
       setErrors({ submit: true })
@@ -846,11 +1005,11 @@ export default function BookingWizard() {
 
   const content = () => {
     switch (step) {
-      case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} savedVehicles={savedVehicles} />
+      case 1: return <Step1 vehicle={vehicle} setVehicle={setVehicle} errors={errors} savedVehicles={savedVehicles} savedPackages={savedPackages} vehicleModelMap={vehicleModelMap} unknownModel={unknownModel} setUnknownModel={setUnknownModel} />
       case 2: return <Step2 vehicle={vehicle} services={services} setServices={setServices} errors={errors} serviceCatalog={serviceCatalog} />
-      case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} serviceCatalog={serviceCatalog} />
+      case 3: return <Step3 location={location} setLocation={setLocation} errors={errors} vehicle={vehicle} services={services} serviceCatalog={serviceCatalog} serviceAreas={serviceAreas} />
       case 4: return <Step4 schedule={schedule} setSchedule={setSchedule} errors={errors} availableSlots={availableSlots} loadingAvailability={loadingAvailability} />
-      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} refNo={refNo} submitError={submitError} serviceCatalog={serviceCatalog} />
+      case 5: return <Step5 vehicle={vehicle} services={services} location={location} schedule={schedule} submitted={submitted} onSubmit={submit} loading={loading} refNo={refNo} submitError={submitError} serviceCatalog={serviceCatalog} serviceAreas={serviceAreas} />
       default: return null
     }
   }

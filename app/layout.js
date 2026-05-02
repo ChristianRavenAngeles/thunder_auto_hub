@@ -1,6 +1,7 @@
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/components/ui/ThemeProvider'
+import SessionGuard from '@/components/SessionGuard'
 
 export const metadata = {
   title: 'Thunder Auto Hub',
@@ -38,6 +39,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="font-body antialiased">
         <ThemeProvider>
+          <SessionGuard />
           {children}
           <Toaster
             position="top-right"

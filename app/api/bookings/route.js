@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { sendBookingConfirmation } from '@/lib/sms'
 import { format } from 'date-fns'
 import { ACTIVE_BOOKING_STATUSES, isSlotAvailable, settingsFromRows } from '@/lib/availability'
+import { getTravelFeeForLocation } from '@/lib/serviceAreas'
 
 export async function POST(request) {
   try {
@@ -14,43 +15,45 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Please sign in before booking a service.' }, { status: 401 })
     }
 
-    const [settingsResult, blackoutResult, blockResult, bookingResult] = await Promise.all([
+    const [settingsResult, blackoutResult, blockResult, bookingResult, serviceAreaResult] = await Promise.all([
       admin.from('settings').select('key, value'),
       admin.from('blackout_dates').select('date'),
       admin.from('booking_slot_blocks').select('date, start_time, end_time, is_full_day'),
       admin
         .from('bookings')
-        .select('id, scheduled_date, scheduled_time')
+        .select('id, scheduled_date, scheduled_time, estimated_duration_hours')
         .in('status', ACTIVE_BOOKING_STATUSES),
+      admin.from('service_areas').select('id, barangay, city, distance_km, travel_fee, is_serviceable'),
     ])
 
-    const slotOk = isSlotAvailable({
-      date: body.scheduled_date,
-      time: body.scheduled_time,
-      settings: settingsFromRows(settingsResult.data || []),
-      blackoutDates: (blackoutResult.data || []).map(row => row.date),
-      slotBlocks: blockResult.data || [],
-      occupiedBookings: bookingResult.data || [],
-    })
-
-    if (!slotOk) {
-      return NextResponse.json({ error: 'Selected schedule is no longer available.' }, { status: 409 })
-    }
-
+    // Resolve services first so we know the booking duration before slot validation
     let serviceLineItems = []
+    const serviceRowsById = {}
+    const serviceRowsByName = {}
     if (body.services?.length) {
-      const servicesWithoutIds = body.services.filter(svc => !svc.id).map(svc => svc.name).filter(Boolean)
-      let serviceIdsByName = {}
-      if (servicesWithoutIds.length) {
-        const { data: serviceRows } = await admin
-          .from('services')
-          .select('id, name')
-          .in('name', servicesWithoutIds)
-        serviceIdsByName = (serviceRows || []).reduce((acc, svc) => ({ ...acc, [svc.name]: svc.id }), {})
+      const serviceIds = body.services.map(svc => svc.id).filter(Boolean)
+      const serviceNames = body.services.map(svc => svc.name).filter(Boolean)
+      const [serviceRowsByIdResult, serviceRowsByNameResult] = await Promise.all([
+        serviceIds.length
+          ? admin.from('services').select('id, name, has_travel_fee, duration_hours').in('id', serviceIds)
+          : Promise.resolve({ data: [] }),
+        serviceNames.length
+          ? admin.from('services').select('id, name, has_travel_fee, duration_hours').in('name', serviceNames)
+          : Promise.resolve({ data: [] }),
+      ])
+
+      for (const svc of serviceRowsByIdResult.data || []) {
+        serviceRowsById[svc.id] = svc
+        serviceRowsByName[svc.name] = svc
+      }
+      for (const svc of serviceRowsByNameResult.data || []) {
+        serviceRowsById[svc.id] = svc
+        serviceRowsByName[svc.name] = svc
       }
 
       serviceLineItems = body.services.map(svc => {
-        const serviceId = svc.id || serviceIdsByName[svc.name]
+        const serviceRow = svc.id ? serviceRowsById[svc.id] : serviceRowsByName[svc.name]
+        const serviceId = serviceRow?.id
         if (!serviceId) throw new Error(`Service is unavailable: ${svc.name}`)
         return {
           service_id:   serviceId,
@@ -61,6 +64,49 @@ export async function POST(request) {
         }
       })
     }
+
+    // Use the longest single service duration (services run one at a time by one rider)
+    const estimatedDurationHours = Math.max(
+      1,
+      ...(body.services || []).map(svc => {
+        const row = svc.id ? serviceRowsById[svc.id] : serviceRowsByName[svc.name]
+        return Number(row?.duration_hours) || 1
+      })
+    )
+
+    const slotOk = isSlotAvailable({
+      date: body.scheduled_date,
+      time: body.scheduled_time,
+      settings: settingsFromRows(settingsResult.data || []),
+      blackoutDates: (blackoutResult.data || []).map(row => row.date),
+      slotBlocks: blockResult.data || [],
+      occupiedBookings: bookingResult.data || [],
+      durationHours: estimatedDurationHours,
+    })
+
+    if (!slotOk) {
+      return NextResponse.json({ error: 'Selected schedule is no longer available.' }, { status: 409 })
+    }
+
+    const hasTravelFee = (body.services || []).some(svc => {
+      const serviceRow = svc.id ? serviceRowsById[svc.id] : serviceRowsByName[svc.name]
+      return Boolean(serviceRow?.has_travel_fee)
+    })
+    const locationCheck = getTravelFeeForLocation({
+      serviceAreas: serviceAreaResult.data || [],
+      barangay: body.barangay,
+      city: body.city,
+      hasTravelFee,
+    })
+
+    if (!locationCheck.serviceable) {
+      return NextResponse.json({ error: 'Selected location is outside the serviceable area.' }, { status: 400 })
+    }
+
+    const subtotal = Number(body.subtotal || 0)
+    const discount = Number(body.discount || 0)
+    const validatedTravelFee = Number(locationCheck.travelFee || 0)
+    const totalPrice = subtotal - discount + validatedTravelFee
 
     // Create booking
     const { data: booking, error: bookingErr } = await admin.from('bookings').insert({
@@ -74,16 +120,17 @@ export async function POST(request) {
       barangay:       body.barangay,
       city:           body.city,
       landmarks:      body.landmarks,
-      travel_fee:     body.travel_fee ?? 0,
-      subtotal:       body.subtotal,
-      discount_amount: body.discount ?? 0,
-      total_price:    body.total,
-      deposit_amount: 100,
-      deposit_paid:   false,
-      payment_status: 'pending',
-      source:         'website',
-      promo_code:     body.promo_code,
-      notes:          body.notes,
+      travel_fee:     validatedTravelFee,
+      subtotal,
+      discount_amount: discount,
+      total_price:    totalPrice,
+      deposit_amount:             100,
+      deposit_paid:               false,
+      payment_status:             'pending',
+      source:                     'website',
+      promo_code:                 body.promo_code,
+      notes:                      body.notes,
+      estimated_duration_hours:   estimatedDurationHours,
     }).select().single()
     if (bookingErr) throw bookingErr
 
@@ -185,7 +232,7 @@ export async function POST(request) {
       action:     'booking_created',
       table_name: 'bookings',
       record_id:  booking.id,
-      new_data:   { reference_no: booking.reference_no, total: body.total },
+      new_data:   { reference_no: booking.reference_no, total: totalPrice, travel_fee: validatedTravelFee },
     })
 
     await admin.from('booking_status_history').insert({

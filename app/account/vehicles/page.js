@@ -1,9 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Car, Check, Edit2, Plus, Trash2, X } from 'lucide-react'
+import Link from 'next/link'
+import { Car, Check, Edit2, Plus, RefreshCw, Star, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createClient } from '@/lib/supabase/client'
+import { formatDate } from '@/lib/utils'
+import { formatPrice } from '@/lib/pricing'
+import { inferRecommendedService } from '@/lib/serviceRecommendations'
 
 const EMPTY_FORM = { make: '', model: '', year: '', plate: '', color: '', tier: 'M' }
 const TIERS = [
@@ -16,6 +20,7 @@ const TIERS = [
 export default function VehiclesPage() {
   const [supabase] = useState(() => createClient())
   const [vehicles, setVehicles] = useState([])
+  const [historyByVehicle, setHistoryByVehicle] = useState({})
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -27,7 +32,28 @@ export default function VehiclesPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     const { data } = await supabase.from('vehicles').select('*').eq('user_id', user.id).order('created_at')
-    setVehicles(data || [])
+    const vehicleRows = data || []
+    setVehicles(vehicleRows)
+
+    if (vehicleRows.length) {
+      const vehicleIds = vehicleRows.map(vehicle => vehicle.id)
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id, vehicle_id, reference_no, status, scheduled_date, total_price, booking_services(service_name, services(category, slug)), photos(id, url, type, is_public), reviews(id, rating, comment, created_at)')
+        .eq('user_id', user.id)
+        .in('vehicle_id', vehicleIds)
+        .order('scheduled_date', { ascending: false })
+
+      const grouped = (bookings || []).reduce((acc, booking) => {
+        if (!acc[booking.vehicle_id]) acc[booking.vehicle_id] = []
+        acc[booking.vehicle_id].push(booking)
+        return acc
+      }, {})
+      setHistoryByVehicle(grouped)
+    } else {
+      setHistoryByVehicle({})
+    }
+
     setLoading(false)
   }
 
@@ -127,26 +153,135 @@ export default function VehiclesPage() {
       ) : (
         <div className="space-y-3">
           {vehicles.map(v => (
-            <div key={v.id} className="card p-4 flex flex-col sm:flex-row sm:items-center gap-4">
-              <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
-                <Car className="w-5 h-5 text-brand-500" />
+            <div key={v.id} className="card p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center">
+                  <Car className="w-5 h-5 text-brand-500" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-thunder-dark">{v.make} {v.model} {v.year && `(${v.year})`}</p>
+                  <p className="text-sm text-[var(--text-muted)]">{v.plate || 'No plate'} - {v.color || '-'} - {v.tier || 'M'}</p>
+                  <VehicleHistorySummary history={historyByVehicle[v.id] || []} />
+                </div>
+                <div className="flex gap-1 self-end sm:self-auto">
+                  <button onClick={() => startEdit(v)} className="p-2 text-[var(--text-muted)] hover:text-brand-600 rounded-lg hover:bg-brand-50 transition-colors">
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => remove(v.id)} className="p-2 text-[var(--text-muted)] hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-thunder-dark">{v.make} {v.model} {v.year && `(${v.year})`}</p>
-                <p className="text-sm text-[var(--text-muted)]">{v.plate || 'No plate'} - {v.color || '-'} - {v.tier || 'M'}</p>
-              </div>
-              <div className="flex gap-1 self-end sm:self-auto">
-                <button onClick={() => startEdit(v)} className="p-2 text-[var(--text-muted)] hover:text-brand-600 rounded-lg hover:bg-brand-50 transition-colors">
-                  <Edit2 className="w-4 h-4" />
-                </button>
-                <button onClick={() => remove(v.id)} className="p-2 text-[var(--text-muted)] hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+              <VehicleHistoryPanel vehicle={v} history={historyByVehicle[v.id] || []} />
             </div>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function VehicleHistorySummary({ history }) {
+  const completed = history.filter(item => item.status === 'completed')
+  const lastCompleted = completed[0]
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+      <span>{completed.length} completed service{completed.length === 1 ? '' : 's'}</span>
+      <span>{lastCompleted ? `Last serviced ${formatDate(lastCompleted.scheduled_date)}` : 'No completed history yet'}</span>
+    </div>
+  )
+}
+
+function VehicleHistoryPanel({ vehicle, history }) {
+  const completed = history.filter(item => item.status === 'completed')
+  const latest = completed[0]
+  const recommendation = inferRecommendedService(latest?.booking_services?.map(service => ({
+    service_name: service.service_name,
+    category: service.services?.category,
+  })) || [])
+  const recent = completed.slice(0, 3)
+
+  return (
+    <div className="mt-4 border-t border-[var(--border)] pt-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_.85fr] gap-4">
+        <div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <h3 className="text-sm font-semibold text-thunder-dark">Service History</h3>
+            {latest && (
+              <Link href={`/book?rebook=${latest.id}`} className="btn-secondary !py-1.5 !px-3 !text-xs flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> Rebook
+              </Link>
+            )}
+          </div>
+          {!recent.length ? (
+            <div className="rounded-xl border border-dashed border-[var(--border)] p-4 text-sm text-[var(--text-muted)]">
+              Completed services will appear here after your first finished booking.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recent.map(item => {
+                const beforePhotos = (item.photos || []).filter(photo => photo.is_public && photo.type === 'before')
+                const afterPhotos = (item.photos || []).filter(photo => photo.is_public && photo.type === 'after')
+                const review = item.reviews?.[0]
+                return (
+                  <div key={item.id} className="rounded-xl border border-[var(--border)] bg-[var(--bg-2)] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-thunder-dark">{item.booking_services?.map(service => service.service_name).join(', ') || 'Service completed'}</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1">{formatDate(item.scheduled_date)} • {item.reference_no}</p>
+                      </div>
+                      <p className="text-sm font-semibold text-brand-600">{formatPrice(item.total_price || 0)}</p>
+                    </div>
+                    {(beforePhotos.length > 0 || afterPhotos.length > 0) && (
+                      <div className="grid grid-cols-2 gap-3 mt-3">
+                        <PhotoStrip title="Before" photos={beforePhotos} />
+                        <PhotoStrip title="After" photos={afterPhotos} />
+                      </div>
+                    )}
+                    {review && (
+                      <div className="mt-3 rounded-lg bg-white px-3 py-2 text-xs text-[var(--text-2)]">
+                        <span className="inline-flex items-center gap-1 font-semibold text-amber-500"><Star className="w-3 h-3 fill-current" /> {review.rating}/5</span>
+                        {review.comment ? <span className="ml-2">{review.comment}</span> : null}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-brand-100 bg-brand-50 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 mb-2">Recommended Next Service</p>
+          <p className="text-sm font-semibold text-thunder-dark">{recommendation.title}</p>
+          <p className="text-xs text-[var(--text-2)] mt-2 leading-relaxed">{recommendation.description}</p>
+          <Link href={`/book?service=${recommendation.slug}&rebook=${latest?.id || ''}`} className="btn-primary !py-2 !px-3 !text-xs inline-flex items-center gap-1 mt-4">
+            Book Recommendation
+          </Link>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function PhotoStrip({ title, photos }) {
+  if (!photos.length) {
+    return (
+      <div className="rounded-lg border border-dashed border-[var(--border)] px-3 py-5 text-center text-[11px] text-[var(--text-muted)]">
+        {title}: no photos
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-2">{title}</p>
+      <div className="grid grid-cols-2 gap-2">
+        {photos.slice(0, 2).map(photo => (
+          <img key={photo.id} src={photo.url} alt={title} className="rounded-lg h-20 w-full object-cover" />
+        ))}
+      </div>
     </div>
   )
 }

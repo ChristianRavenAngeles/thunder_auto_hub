@@ -12,7 +12,7 @@ export default async function BlogPage() {
   const admin = createAdminClient()
   const { data: posts } = await admin
     .from('blog_posts')
-    .select('id, title, slug, excerpt, cover_url, category, published_at, created_at')
+    .select('id, title, slug, excerpt, cover_url, tags, published_at, created_at')
     .eq('is_published', true)
     .order('published_at', { ascending: false })
 
@@ -39,7 +39,7 @@ export default async function BlogPage() {
                   <div className="p-5">
                     <div className="flex items-center gap-3 mb-3 text-xs text-[var(--text-muted)]">
                       <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(post.published_at || post.created_at)}</span>
-                      {post.category && <span className="flex items-center gap-1 badge-teal"><Tag className="w-3 h-3" /> {post.category}</span>}
+                      {post.tags?.[0] && <span className="flex items-center gap-1 badge-teal"><Tag className="w-3 h-3" /> {post.tags[0]}</span>}
                     </div>
                     <h2 className="font-bold text-thunder-dark group-hover:text-brand-600 transition-colors mb-2">{post.title}</h2>
                     {post.excerpt && <p className="text-sm text-[var(--text-muted)] line-clamp-3">{post.excerpt}</p>}

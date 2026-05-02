@@ -5,8 +5,8 @@ import { authCookieOptions, toSessionCookieOptions } from '@/lib/supabase/cookie
 const PROTECTED_CUSTOMER = ['/account']
 const PROTECTED_ADMIN     = ['/admin']
 const PROTECTED_RIDER     = ['/rider']
-const PROTECTED_PARTNER   = ['/partner']
-const RIDER_PORTAL_DISABLED = true
+const PROTECTED_PARTNER   = [] // /partner is a public apply page — no auth required
+const RIDER_PORTAL_DISABLED = false
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl

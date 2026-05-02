@@ -18,7 +18,7 @@ export async function GET() {
       admin.from('booking_slot_blocks').select('date, start_time, end_time, is_full_day'),
       admin
         .from('bookings')
-        .select('id, scheduled_date, scheduled_time')
+        .select('id, scheduled_date, scheduled_time, estimated_duration_hours')
         .in('status', ACTIVE_BOOKING_STATUSES),
     ])
 

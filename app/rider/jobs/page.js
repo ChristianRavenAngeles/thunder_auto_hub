@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation'
+import RiderJobsClient from '@/components/rider/RiderJobsClient'
 
 export default function RiderJobsPage() {
-  redirect('/account')
+  return <RiderJobsClient />
 }

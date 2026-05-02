@@ -21,6 +21,8 @@ export default function RiderSidebar({ profile }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
   async function signOut() {
+    sessionStorage.removeItem('thunder-session-active')
+    await fetch('/api/auth/signout', { method: 'POST' })
     await supabase.auth.signOut()
     router.push('/auth')
   }

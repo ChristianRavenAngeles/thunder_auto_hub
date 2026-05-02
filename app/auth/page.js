@@ -266,6 +266,12 @@ function AuthForm() {
     setRole(roleParam === 'staff' ? 'staff' : 'customer')
   }, [roleParam])
 
+  useEffect(() => {
+    if (step !== 'success') return
+    const t = setTimeout(() => { router.push(redirect); router.refresh() }, 1500)
+    return () => clearTimeout(t)
+  }, [step])
+
   async function handleCustomerSubmit(e) {
     e?.preventDefault()
     if (!customerValid) return
@@ -276,6 +282,7 @@ function AuthForm() {
       const res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
+      sessionStorage.setItem('thunder-session-active', '1')
       toast.success(isNew ? 'Account created!' : 'Welcome back!')
       setStep('success')
     } catch (err) {
@@ -299,6 +306,7 @@ function AuthForm() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Login failed')
 
+      sessionStorage.setItem('thunder-session-active', '1')
       toast.success('Welcome back!')
       router.push(getStaffDestination(data.role, redirect))
       router.refresh()

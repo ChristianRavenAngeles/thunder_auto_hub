@@ -54,6 +54,8 @@ export default function PublicNav() {
   }, [])
 
   async function handleSignOut() {
+    sessionStorage.removeItem('thunder-session-active')
+    await fetch('/api/auth/signout', { method: 'POST' })
     await supabase.auth.signOut()
     router.push('/')
     router.refresh()

@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import ChatWindow from '@/components/ui/ChatWindow'
-import { MessageSquare } from 'lucide-react'
+import { Bell, CheckCheck, MessageSquare } from 'lucide-react'
 import { timeAgo } from '@/lib/utils'
 
 function sortedMessages(convo) {
@@ -18,10 +19,12 @@ function unreadCount(convo, userId) {
 export default function CustomerMessagesPage() {
   const supabase = createClient()
   const [conversations, setConversations] = useState([])
+  const [notifications, setNotifications] = useState([])
   const [selected, setSelected]           = useState(null)
   const [userId, setUserId]               = useState(null)
   const [userName, setUserName]           = useState('')
   const [loading, setLoading]             = useState(true)
+  const [loadingNotifications, setLoadingNotifications] = useState(true)
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
@@ -30,8 +33,23 @@ export default function CustomerMessagesPage() {
       const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', data.user.id).single()
       setUserName(profile?.full_name || '')
       loadConversations(data.user.id)
+      loadNotifications(data.user.id)
     })
   }, [])
+
+  useEffect(() => {
+    if (!userId) return
+    const channel = supabase
+      .channel('account-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
+        if (payload.new.user_id === userId) {
+          setNotifications(prev => [payload.new, ...prev])
+        }
+      })
+      .subscribe()
+
+    return () => supabase.removeChannel(channel)
+  }, [supabase, userId])
 
   async function loadConversations(uid) {
     const { data: participantRows } = await supabase
@@ -53,17 +71,73 @@ export default function CustomerMessagesPage() {
     setLoading(false)
   }
 
+  async function loadNotifications(uid) {
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(30)
+
+    setNotifications(data || [])
+    setLoadingNotifications(false)
+  }
+
   function markRead(conversationId) {
     const stamp = new Date().toISOString()
     setConversations(prev => prev.map(convo => convo.id === conversationId ? { ...convo, last_read_at: stamp } : convo))
   }
 
+  async function markAllNotificationsRead() {
+    if (!userId) return
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', userId).eq('is_read', false)
+    setNotifications(prev => prev.map(item => ({ ...item, is_read: true })))
+  }
+
+  const unreadNotifications = notifications.filter(item => !item.is_read).length
+
   return (
-    <div className="max-w-4xl h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)]">
+    <div className="max-w-7xl h-[calc(100dvh-9rem)] md:h-[calc(100vh-8rem)]">
       <h1 className="text-2xl font-bold font-display text-thunder-dark mb-4">Messages</h1>
-      <div className="flex flex-col md:flex-row h-[calc(100%-3rem)] gap-4 min-h-0">
-        {/* Conversation list */}
-        <div className="w-full md:w-72 md:flex-shrink-0 h-48 md:h-auto card overflow-hidden flex flex-col">
+      <div className="grid grid-cols-1 xl:grid-cols-[300px_280px_minmax(0,1fr)] h-[calc(100%-3rem)] gap-4 min-h-0">
+        <div className="card overflow-hidden flex flex-col min-h-0">
+          <div className="p-3 border-b border-[var(--border)] flex items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-thunder-dark text-sm flex items-center gap-2">
+                <Bell className="w-4 h-4 text-brand-500" /> Notifications
+              </h2>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1">{unreadNotifications} unread</p>
+            </div>
+            <button onClick={markAllNotificationsRead} className="btn-secondary !py-1.5 !px-2 !text-[11px] flex items-center gap-1">
+              <CheckCheck className="w-3 h-3" /> Mark all
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {loadingNotifications ? (
+              <p className="text-center text-[var(--text-muted)] text-sm py-8">Loading…</p>
+            ) : !notifications.length ? (
+              <div className="text-center py-8 px-4">
+                <Bell className="w-8 h-8 text-[var(--text-2)] mx-auto mb-2" />
+                <p className="text-[var(--text-muted)] text-sm">No notifications yet.</p>
+              </div>
+            ) : notifications.map(item => (
+              <Link
+                key={item.id}
+                href={item.data?.booking_id ? '/account/bookings' : '/account/messages'}
+                className={`block p-3 border-b border-[var(--border)] hover:bg-brand-50 transition-colors ${item.is_read ? '' : 'bg-brand-50/60'}`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-xs font-semibold text-thunder-dark">{item.title}</p>
+                  {!item.is_read && <span className="badge-red text-[10px]">New</span>}
+                </div>
+                <p className="text-xs text-[var(--text-2)] mt-1">{item.body}</p>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1">{timeAgo(item.created_at)}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full xl:w-auto h-48 xl:h-auto card overflow-hidden flex flex-col min-h-0">
           <div className="p-3 border-b border-[var(--border)]">
             <h2 className="font-semibold text-thunder-dark text-sm">Conversations</h2>
           </div>

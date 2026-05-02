@@ -9,39 +9,54 @@ import { formatDate } from '@/lib/utils'
 import { formatPrice } from '@/lib/pricing'
 import PublicNav from '@/components/layout/PublicNav'
 import PublicFooter from '@/components/layout/PublicFooter'
+import { buildBookingTimeline } from '@/lib/bookingTimeline'
+import { countdownFromEta } from '@/lib/riderWorkflow'
 
-const STATUS_STEPS = [
-  { key: 'pending',     icon: Clock,        label: 'Booking Received',  desc: 'Natanggap na ang inyong booking.' },
-  { key: 'confirmed',   icon: Check,        label: 'Confirmed',          desc: 'Confirmed na! Abangan ang aming team.' },
-  { key: 'rescheduled', icon: Clock,        label: 'Rescheduled',        desc: 'Na-update na ang schedule ng inyong booking.' },
-  { key: 'assigned',    icon: Truck,        label: 'Team Assigned',      desc: 'May team na para sa inyong booking.' },
-  { key: 'on_the_way',  icon: Truck,        label: 'On the Way',         desc: 'Papunta na ang aming team sa inyo.' },
-  { key: 'in_progress', icon: Sparkles,     label: 'In Progress',        desc: 'Nagsimula na ang serbisyo.' },
-  { key: 'completed',   icon: CheckCircle,  label: 'Completed!',         desc: 'Tapos na! Salamat sa tiwala. 🙏' },
-]
+const TIMELINE_ICONS = {
+  pending: Clock,
+  confirmed: Check,
+  assigned: Truck,
+  on_the_way: Truck,
+  in_progress: Sparkles,
+  completed: CheckCircle,
+  reviewed: CheckCircle,
+}
 
 export default function TrackingPage() {
   const { refNo } = useParams()
   const supabase  = createClient()
   const [booking, setBooking] = useState(null)
+  const [rider, setRider] = useState(null)
   const [photos,  setPhotos]  = useState([])
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+  const [, setTicker] = useState(0)
 
   useEffect(() => {
     if (refNo) loadBooking()
   }, [refNo])
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setTicker(prev => prev + 1), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
+
   async function loadBooking() {
     setLoading(true)
     const { data } = await supabase
       .from('bookings')
-      .select('*, profiles(full_name, phone), vehicles(make, model, tier), booking_services(service_name), payments(*)')
+      .select('*, profiles(full_name, phone), vehicles(make, model, tier), booking_services(service_name), payments(*), reviews(id)')
       .eq('reference_no', refNo.toUpperCase())
       .single()
 
     if (!data) { setNotFound(true); setLoading(false); return }
     setBooking(data)
+    if (data.rider_id) {
+      const { data: riderProfile } = await supabase.from('profiles').select('full_name, phone').eq('id', data.rider_id).single()
+      setRider(riderProfile || null)
+    } else {
+      setRider(null)
+    }
 
     const { data: photoData } = await supabase.from('photos').select('*').eq('booking_id', data.id).eq('is_public', true)
     setPhotos(photoData || [])
@@ -55,9 +70,10 @@ export default function TrackingPage() {
       .subscribe()
   }
 
-  const currentStepIdx = STATUS_STEPS.findIndex(s => s.key === booking?.status)
   const isCancelled    = booking?.status === 'cancelled'
   const isCompleted    = booking?.status === 'completed'
+  const timeline = buildBookingTimeline(booking?.status, { hasReview: Boolean(booking?.reviews?.length) })
+  const etaCountdown = booking ? countdownFromEta(booking) : null
 
   if (loading) return (
     <>
@@ -123,10 +139,31 @@ export default function TrackingPage() {
                   {booking?.eta_minutes && booking?.status === 'on_the_way' && (
                     <div className="bg-amber-50 rounded-xl px-3 py-2">
                       <p className="text-xs text-amber-700">🚗 ETA: ~{booking.eta_minutes} minuto</p>
+                      {etaCountdown !== null && <p className="text-xs text-amber-600 mt-1">Approx. {etaCountdown} minute{etaCountdown === 1 ? '' : 's'} remaining</p>}
                     </div>
                   )}
                 </div>
               </div>
+
+              {(rider || booking?.status === 'assigned' || booking?.status === 'on_the_way' || booking?.status === 'in_progress') && (
+                <div className="card p-5">
+                  <h3 className="font-bold font-display text-thunder-dark mb-3">Live Team Update</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+                    <div className="rounded-xl bg-[var(--bg-2)] px-4 py-3">
+                      <p className="text-xs text-[var(--text-muted)]">Assigned Team</p>
+                      <p className="font-medium text-thunder-dark mt-1">{rider?.full_name || 'Thunder service team'}</p>
+                    </div>
+                    <div className="rounded-xl bg-[var(--bg-2)] px-4 py-3">
+                      <p className="text-xs text-[var(--text-muted)]">Current Stage</p>
+                      <p className="font-medium text-thunder-dark mt-1">{booking?.status?.replace(/_/g, ' ')}</p>
+                    </div>
+                    <div className="rounded-xl bg-[var(--bg-2)] px-4 py-3">
+                      <p className="text-xs text-[var(--text-muted)]">Proof Photos</p>
+                      <p className="font-medium text-thunder-dark mt-1">{photos.length} uploaded</p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Services */}
               <div className="card p-5">
@@ -143,11 +180,11 @@ export default function TrackingPage() {
                 <div className="card p-5">
                   <h3 className="font-bold font-display text-thunder-dark mb-4">Service Status</h3>
                   <div className="space-y-3">
-                    {STATUS_STEPS.map((step, idx) => {
-                      const isDone    = idx < currentStepIdx
-                      const isCurrent = idx === currentStepIdx
-                      const isPending = idx > currentStepIdx
-                      const Icon = step.icon
+                    {timeline.map(step => {
+                      const isDone = step.state === 'done'
+                      const isCurrent = step.state === 'current'
+                      const isPending = step.state === 'upcoming'
+                      const Icon = TIMELINE_ICONS[step.key] || Clock
                       return (
                         <div key={step.key} className="flex items-start gap-3">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
@@ -161,13 +198,16 @@ export default function TrackingPage() {
                             <p className={`text-sm font-semibold ${isCurrent ? 'text-brand-600' : isDone ? 'text-green-700' : 'text-[var(--text-2)]'}`}>
                               {step.label}
                             </p>
-                            {isCurrent && <p className="text-xs text-[var(--text-muted)] mt-0.5">{step.desc}</p>}
+                            {isCurrent && <p className="text-xs text-[var(--text-muted)] mt-0.5">{step.description}</p>}
                           </div>
                           {isDone && <Check className="w-4 h-4 text-green-500 mt-1 flex-shrink-0" />}
                         </div>
                       )
                     })}
                   </div>
+                  {booking?.status === 'rescheduled' && (
+                    <p className="mt-4 text-xs text-amber-600">Your booking has been rescheduled and remains on the confirmed stage until dispatch.</p>
+                  )}
                 </div>
               )}
 

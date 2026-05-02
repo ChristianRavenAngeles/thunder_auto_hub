@@ -25,7 +25,7 @@ function unreadCount(convo, userId) {
 function statusColor(status) {
   if (status === 'completed') return 'badge-green'
   if (status === 'cancelled' || status === 'no_show') return 'badge-red'
-  if (status === 'rescheduled' || status === 'in_progress') return 'badge-gold'
+  if (status === 'rescheduled' || status === 'in_progress' || status === 'on_the_way') return 'badge-gold'
   return 'badge-teal'
 }
 
@@ -53,7 +53,7 @@ export default function AdminMessagesPage() {
   async function loadAll() {
     const { data } = await supabase
       .from('conversations')
-      .select('*, bookings(id, reference_no, status, admin_notes, profiles(full_name, phone)), conversation_participants(user_id, last_read_at), messages(body, created_at, sender_id)')
+      .select('*, bookings(id, reference_no, status, admin_notes, service_flags, profiles(full_name, phone)), conversation_participants(user_id, last_read_at), messages(body, created_at, sender_id)')
       .order('created_at', { ascending: false })
 
     const rows = data || []
@@ -80,12 +80,17 @@ export default function AdminMessagesPage() {
   async function saveNotes() {
     if (!selected?.bookings?.id) return
     setSavingNotes(true)
-    const { error } = await supabase
-      .from('bookings')
-      .update({ admin_notes: notesDraft, updated_at: new Date().toISOString() })
-      .eq('id', selected.bookings.id)
+    const response = await fetch(`/api/admin/bookings/${selected.bookings.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'update_internal',
+        admin_notes: notesDraft,
+        service_flags: selected.bookings.service_flags || [],
+      }),
+    })
 
-    if (error) {
+    if (!response.ok) {
       toast.error('Could not save notes.')
     } else {
       toast.success('Admin notes saved.')

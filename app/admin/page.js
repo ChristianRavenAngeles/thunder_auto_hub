@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic'
 import { createAdminClient } from '@/lib/supabase/admin'
 import Link from 'next/link'
 import { formatPrice, formatDate } from '@/lib/utils'
+import { getBookingSlaAlerts } from '@/lib/sla'
 
 /* ── helpers ── */
 const peso = (n) => '₱' + Number(n || 0).toLocaleString()
@@ -67,7 +68,7 @@ export default async function AdminDashboard() {
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString()
   const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString()
 
-  const [statsResult, bookingsResult, paymentsResult, weeklyPayments, prevWeeklyPayments] = await Promise.all([
+  const [statsResult, bookingsResult, paymentsResult, weeklyPayments, prevWeeklyPayments, slaBookingsResult] = await Promise.all([
     admin.rpc('get_dashboard_stats').single(),
     admin.from('bookings')
       .select('id, reference_no, status, scheduled_date, total_price, created_at, profiles(full_name), vehicles(make, model)')
@@ -88,6 +89,11 @@ export default async function AdminDashboard() {
       .eq('status', 'paid')
       .gte('created_at', twoWeeksAgo)
       .lt('created_at', weekAgo),
+    admin.from('bookings')
+      .select('id, reference_no, status, scheduled_date, scheduled_time, created_at, updated_at, profiles(full_name)')
+      .in('status', ['pending', 'confirmed', 'assigned', 'rescheduled', 'on_the_way', 'in_progress'])
+      .order('scheduled_date', { ascending: true })
+      .limit(20),
   ])
 
   // Build daily revenue for this week (last 7 days)
@@ -119,6 +125,10 @@ export default async function AdminDashboard() {
   const totalRevenue    = s.total_revenue     || 0
   const recentBookings  = bookingsResult.data || []
   const pendingPayments = paymentsResult.data || []
+  const slaAlerts = (slaBookingsResult.data || [])
+    .flatMap(booking => getBookingSlaAlerts(booking).map(alert => ({ ...alert, booking })))
+    .sort((a, b) => (a.severity === 'high' ? -1 : 1) - (b.severity === 'high' ? -1 : 1))
+    .slice(0, 5)
 
   const stats = [
     { label: 'Total Bookings',   value: totalBookings || 0,        icon: 'bookings', color: '#60A5FA', href: '/admin/bookings' },
@@ -321,6 +331,45 @@ export default async function AdminDashboard() {
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: '#FBB724' }}>{peso(p.amount)}</div>
                     <div style={{ fontSize: 10, color: '#666', fontFamily: 'var(--font-cond)' }}>DEPOSIT</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div style={{ background: '#1C1C1C', border: '1px solid #2A2A2A', borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <span style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, letterSpacing: '.08em', color: '#FFFFFF' }}>SLA ALERTS</span>
+              <span style={{ fontFamily: 'var(--font-cond)', fontSize: 11, color: slaAlerts.length ? '#F87171' : '#22C55E', fontWeight: 700 }}>
+                {slaAlerts.length ? `${slaAlerts.length} active` : 'All clear'}
+              </span>
+            </div>
+            {!slaAlerts.length ? (
+              <div style={{ textAlign: 'center', padding: '16px 0', color: '#666', fontSize: 13 }}>No active SLA risks.</div>
+            ) : slaAlerts.map(item => (
+              <Link key={`${item.booking.id}-${item.key}`} href={`/admin/bookings/${item.booking.id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                <div style={{ padding: '10px 0', borderBottom: '1px solid #2A2A2A' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                    <div>
+                      <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13, color: '#FFFFFF' }}>
+                        {item.booking.reference_no} · {item.label}
+                      </div>
+                      <div style={{ fontSize: 11, color: '#666' }}>
+                        {item.booking.profiles?.full_name || 'Customer'} · {item.detail}
+                      </div>
+                    </div>
+                    <span style={{
+                      padding: '3px 8px',
+                      borderRadius: 20,
+                      background: item.severity === 'high' ? 'rgba(248,113,113,.12)' : 'rgba(255,210,0,.12)',
+                      color: item.severity === 'high' ? '#F87171' : '#FFD200',
+                      fontFamily: 'var(--font-cond)',
+                      fontWeight: 700,
+                      fontSize: 10,
+                      letterSpacing: '.08em',
+                    }}>
+                      {item.severity.toUpperCase()}
+                    </span>
                   </div>
                 </div>
               </Link>
