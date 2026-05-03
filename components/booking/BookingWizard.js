@@ -580,72 +580,211 @@ function Step3({ location, setLocation, errors, vehicle, services, serviceCatalo
 
 /* ─── Step 4 ─── */
 function Step4({ schedule, setSchedule, errors, availableSlots, loadingAvailability }) {
-  const selectedValue = schedule.date && schedule.time ? `${schedule.date}|${normalizeTime(schedule.time)}` : ''
-  const grouped = availableSlots.reduce((acc, slot) => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  // Build a set of available dates and a map of date → slots
+  const slotMap = availableSlots.reduce((acc, slot) => {
     if (!acc[slot.date]) acc[slot.date] = []
     acc[slot.date].push(slot)
     return acc
   }, {})
-  const dates = Object.entries(grouped).slice(0, 10)
+  const availableDates = new Set(Object.keys(slotMap))
+
+  // Calendar month state — start on current month
+  const [calYear,  setCalYear]  = useState(today.getFullYear())
+  const [calMonth, setCalMonth] = useState(today.getMonth()) // 0-indexed
+
+  const firstDay  = new Date(calYear, calMonth, 1)
+  const lastDay   = new Date(calYear, calMonth + 1, 0)
+  const startPad  = firstDay.getDay() // 0=Sun
+  const totalCells = startPad + lastDay.getDate()
+  const weeks      = Math.ceil(totalCells / 7)
+
+  const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT']
+  const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+  function prevMonth() {
+    if (calMonth === 0) { setCalYear(y => y - 1); setCalMonth(11) }
+    else setCalMonth(m => m - 1)
+  }
+  function nextMonth() {
+    if (calMonth === 11) { setCalYear(y => y + 1); setCalMonth(0) }
+    else setCalMonth(m => m + 1)
+  }
+
+  // Don't allow going back before current month
+  const isCurrentMonth = calYear === today.getFullYear() && calMonth === today.getMonth()
+
+  const selectedSlots = schedule.date ? (slotMap[schedule.date] || []) : []
 
   return (
     <div style={{ animation: 'bk-pop .4s ease both' }}>
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 24 }}>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 40, lineHeight: 1, marginBottom: 6, color: '#FFFFFF' }}>ISKEDYUL</h2>
         <p style={{ fontSize: 14, color: '#CFCFCF' }}>Pumili ng petsa at oras. Lunes hanggang Biyernes lamang, 8AM–4PM.</p>
       </div>
+
       {errors.date && (
         <div style={{ padding: '12px 16px', background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 10, marginBottom: 16, fontSize: 13, color: '#F87171', fontFamily: 'var(--font-cond)', fontWeight: 600, letterSpacing: '.06em' }}>
           Pumili ng petsa at oras.
         </div>
       )}
-      <FieldLabel required>AVAILABLE SLOTS</FieldLabel>
-      <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 12, padding: 18 }}>
+
+      {/* Calendar */}
+      <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 14, overflow: 'hidden', marginBottom: 16 }}>
+
+        {/* Month nav */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid #2A2A2A' }}>
+          <button type="button" onClick={prevMonth} disabled={isCurrentMonth} style={{
+            width: 36, height: 36, borderRadius: 8, border: '1px solid #3A3A3A', background: 'transparent',
+            color: isCurrentMonth ? '#444' : '#CFCFCF', cursor: isCurrentMonth ? 'not-allowed' : 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, lineHeight: 1,
+          }}>‹</button>
+
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: 20, color: '#FFFFFF', letterSpacing: '.06em' }}>
+            {MONTH_NAMES[calMonth].toUpperCase()} {calYear}
+          </span>
+
+          <button type="button" onClick={nextMonth} style={{
+            width: 36, height: 36, borderRadius: 8, border: '1px solid #3A3A3A', background: 'transparent',
+            color: '#CFCFCF', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, lineHeight: 1,
+          }}>›</button>
+        </div>
+
+        {/* Day labels */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid #2A2A2A' }}>
+          {DAY_LABELS.map(d => (
+            <div key={d} style={{ padding: '8px 0', textAlign: 'center', fontFamily: 'var(--font-cond)', fontSize: 10, fontWeight: 700, letterSpacing: '.1em', color: d === 'SUN' || d === 'SAT' ? '#555' : '#777' }}>
+              {d}
+            </div>
+          ))}
+        </div>
+
+        {/* Day cells */}
         {loadingAvailability ? (
-          <div style={{ color: '#777', fontSize: 13, padding: '28px 0', textAlign: 'center' }}>Loading available slots...</div>
-        ) : dates.length === 0 ? (
-          <div style={{ color: '#F87171', fontSize: 13, padding: '28px 0', textAlign: 'center' }}>No available slots right now.</div>
+          <div style={{ padding: '40px 0', textAlign: 'center', color: '#777', fontSize: 13 }}>Loading availability…</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {dates.map(([date, slots]) => (
-              <div key={date}>
-                <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.12em', color: '#777', marginBottom: 8 }}>
-                  {new Date(date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'short', month: 'short', day: 'numeric' }).toUpperCase()}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(118px, 1fr))', gap: 8 }}>
-                  {slots.map(slot => {
-                    const selected = selectedValue === slot.value
-                    return (
-                      <button
-                        key={slot.value}
-                        type="button"
-                        onClick={() => setSchedule({ ...schedule, date: slot.date, time: slot.time })}
-                        style={{
-                          minHeight: 50,
-                          borderRadius: 10,
-                          border: `1.5px solid ${selected ? '#FFD200' : '#3A3A3A'}`,
-                          background: selected ? 'rgba(255,210,0,.12)' : '#222',
-                          color: selected ? '#FFD200' : '#CFCFCF',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          padding: '10px 12px',
-                          fontFamily: 'var(--font-cond)',
-                          fontWeight: 700,
-                          letterSpacing: '.06em',
-                        }}
-                      >
-                        <span style={{ display: 'block', fontSize: 14 }}>{displayTime(slot.time)}</span>
-                        {slot.remaining > 1 && <span style={{ display: 'block', fontSize: 10, color: '#777', marginTop: 2 }}>{slot.remaining} slots left</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            ))}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
+            {Array.from({ length: weeks * 7 }).map((_, i) => {
+              const dayNum = i - startPad + 1
+              const isValidDay = dayNum >= 1 && dayNum <= lastDay.getDate()
+              if (!isValidDay) return <div key={i} style={{ minHeight: 52 }} />
+
+              const dateStr   = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+              const cellDate  = new Date(calYear, calMonth, dayNum)
+              const isPast    = cellDate < today
+              const isWeekend = cellDate.getDay() === 0 || cellDate.getDay() === 6
+              const hasSlots  = availableDates.has(dateStr)
+              const isSelected = schedule.date === dateStr
+              const isToday   = cellDate.getTime() === today.getTime()
+              const disabled  = isPast || isWeekend || !hasSlots
+
+              return (
+                <button
+                  key={dateStr}
+                  type="button"
+                  disabled={disabled}
+                  onClick={() => {
+                    setSchedule({ date: dateStr, time: '' })
+                  }}
+                  style={{
+                    minHeight: 52,
+                    border: 'none',
+                    borderTop: '1px solid #2A2A2A',
+                    borderRight: (i + 1) % 7 !== 0 ? '1px solid #2A2A2A' : 'none',
+                    background: isSelected ? 'rgba(255,210,0,.15)' : 'transparent',
+                    cursor: disabled ? 'default' : 'pointer',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
+                    transition: 'background .12s',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={e => { if (!disabled && !isSelected) e.currentTarget.style.background = 'rgba(255,255,255,.04)' }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent' }}
+                >
+                  <span style={{
+                    width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 13,
+                    background: isSelected ? '#FFD200' : isToday ? 'rgba(255,210,0,.15)' : 'transparent',
+                    color: isSelected ? '#0B0B0B' : disabled ? '#3A3A3A' : isToday ? '#FFD200' : '#CFCFCF',
+                    border: isToday && !isSelected ? '1.5px solid rgba(255,210,0,.4)' : 'none',
+                  }}>
+                    {dayNum}
+                  </span>
+                  {hasSlots && !disabled && (
+                    <span style={{
+                      width: 4, height: 4, borderRadius: '50%',
+                      background: isSelected ? '#FFD200' : '#22C55E',
+                    }} />
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
       </div>
-        {/* Time — full width horizontal wrap */}
+
+      {/* Legend */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { dot: '#22C55E', label: 'Available' },
+          { dot: '#FFD200', label: 'Selected' },
+          { dot: '#3A3A3A', label: 'Unavailable / Weekend' },
+        ].map(l => (
+          <div key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: l.dot, display: 'inline-block' }} />
+            <span style={{ fontSize: 11, color: '#777', fontFamily: 'var(--font-cond)', letterSpacing: '.06em' }}>{l.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Time slots — shown after a date is picked */}
+      {schedule.date && (
+        <div style={{ background: '#1A1A1A', border: '1.5px solid #3A3A3A', borderRadius: 14, padding: 20, animation: 'bk-pop .3s ease both' }}>
+          <div style={{ fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 12, letterSpacing: '.14em', color: '#777', marginBottom: 12 }}>
+            AVAILABLE TIMES — {new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase()}
+          </div>
+          {selectedSlots.length === 0 ? (
+            <div style={{ fontSize: 13, color: '#F87171', textAlign: 'center', padding: '16px 0' }}>No available time slots for this date.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8 }}>
+              {selectedSlots.map(slot => {
+                const selected = normalizeTime(slot.time) === normalizeTime(schedule.time)
+                return (
+                  <button
+                    key={slot.value}
+                    type="button"
+                    onClick={() => setSchedule({ ...schedule, time: slot.time })}
+                    style={{
+                      padding: '12px 10px', borderRadius: 10, textAlign: 'center', cursor: 'pointer', transition: 'all .12s',
+                      border: `1.5px solid ${selected ? '#FFD200' : '#3A3A3A'}`,
+                      background: selected ? 'rgba(255,210,0,.12)' : '#222',
+                    }}
+                  >
+                    <span style={{ display: 'block', fontFamily: 'var(--font-cond)', fontWeight: 700, fontSize: 14, color: selected ? '#FFD200' : '#CFCFCF', letterSpacing: '.06em' }}>
+                      {displayTime(slot.time)}
+                    </span>
+                    {slot.remaining > 1 && (
+                      <span style={{ display: 'block', fontSize: 10, color: '#555', marginTop: 3 }}>{slot.remaining} slots left</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Selected summary */}
+      {schedule.date && schedule.time && (
+        <div style={{ marginTop: 12, padding: '12px 16px', background: 'rgba(34,197,94,.07)', border: '1px solid rgba(34,197,94,.2)', borderRadius: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth="2.5" strokeLinecap="round"><path d="M20 6L9 17l-5-5"/></svg>
+          <span style={{ fontSize: 13, color: '#22C55E', fontFamily: 'var(--font-cond)', fontWeight: 700, letterSpacing: '.06em' }}>
+            {new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })} · {displayTime(schedule.time)}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
