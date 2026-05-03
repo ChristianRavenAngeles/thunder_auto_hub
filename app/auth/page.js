@@ -236,7 +236,7 @@ function AuthForm() {
 
   const [role,     setRole]     = useState(roleParam === 'staff' ? 'staff' : 'customer')
   const [step,     setStep]     = useState('form') // form | success
-  const [isNew,    setIsNew]    = useState(false)
+  const [isNew,    setIsNew]    = useState(redirect.startsWith('/book'))
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')

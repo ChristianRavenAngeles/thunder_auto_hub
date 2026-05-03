@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 import { authCookieOptions, toSessionCookieOptions } from '@/lib/supabase/cookies'
 
-const PROTECTED_CUSTOMER = ['/account']
+const PROTECTED_CUSTOMER = ['/account', '/book']
 const PROTECTED_ADMIN     = ['/admin']
 const PROTECTED_RIDER     = ['/rider']
 const PROTECTED_PARTNER   = [] // /partner is a public apply page — no auth required
