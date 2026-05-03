@@ -9,10 +9,12 @@ import { findServiceAreaMatch, formatDistanceLabel, formatTravelFeeLabel, getTra
 
 /* ─── static data ─── */
 const TIERS = [
-  { id: 'S',  label: 'S',  name: 'Small',       sub: 'Subcompact sedan / hatchback' },
-  { id: 'M',  label: 'M',  name: 'Medium',       sub: 'Compact sedan / small SUV / MPV' },
-  { id: 'L',  label: 'L',  name: 'Large',        sub: 'Mid-size SUV / pickup truck' },
-  { id: 'XL', label: 'XL', name: 'Extra Large',  sub: 'Full-size SUV / van' },
+  { id: 'S',  label: 'S',  name: 'Small',        sub: 'Subcompact sedan / hatchback' },
+  { id: 'M',  label: 'M',  name: 'Medium',        sub: 'Compact sedan / small SUV / MPV' },
+  { id: 'L',  label: 'L',  name: 'Large',         sub: 'Mid-size SUV / pickup truck' },
+  { id: 'XL', label: 'XL', name: 'Extra Large',   sub: 'Full-size SUV / van' },
+  { id: 'MS', label: 'MS', name: 'Moto Small',    sub: 'Motorcycle 50–299cc' },
+  { id: 'ML', label: 'ML', name: 'Moto Large',    sub: 'Motorcycle 300cc+' },
 ]
 
 const SERVICES = {
@@ -63,6 +65,22 @@ const SERVICES = {
     { name: 'Headlight Restore',    cat: 'Detail',  price: 499 },
     { name: 'Ceramic Coating',      cat: 'Coating', price: 5249, orig: 6999 },
     { name: 'Graphene Coating',     cat: 'Coating', price: 7874, orig: 10499 },
+  ],
+  MS: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 149 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 249 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 499 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 799 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 999 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 1499, orig: 1999 },
+  ],
+  ML: [
+    { name: 'Basic Wash',           cat: 'Wash',    price: 199 },
+    { name: 'Premium Wash',         cat: 'Wash',    price: 349 },
+    { name: 'Exterior Detailing',   cat: 'Detail',  price: 699 },
+    { name: 'Full Detailing',       cat: 'Detail',  price: 1099 },
+    { name: 'Paint Correction',     cat: 'Detail',  price: 1299 },
+    { name: 'Ceramic Coating',      cat: 'Coating', price: 1999, orig: 2699 },
   ],
 }
 

@@ -7,6 +7,8 @@ const TIERS = [
   { id: 'M',  label: 'Medium',      color: '#34D399' },
   { id: 'L',  label: 'Large',       color: '#FFD200' },
   { id: 'XL', label: 'Extra Large', color: '#F87171' },
+  { id: 'MS', label: 'Moto Small',  color: '#F59E0B' },
+  { id: 'ML', label: 'Moto Large',  color: '#EC4899' },
 ]
 
 function TierBadge({ tier }) {

@@ -40,16 +40,24 @@ export default async function AccountDashboard() {
       {activeBooking && (
         <div className="card p-4 bg-brand-50 border-brand-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-brand-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <Clock className="w-5 h-5 text-brand-600" />
             </div>
             <div>
-              <p className="font-semibold text-thunder-dark text-sm">Active Booking</p>
-              <p className="text-xs text-[var(--text-muted)]">
-                {activeBooking.reference_no} —
-                <span className={`ml-1 ${BOOKING_STATUS_LABELS[activeBooking.status]?.color}`}>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="font-semibold text-thunder-dark text-sm">Active Booking</p>
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${BOOKING_STATUS_LABELS[activeBooking.status]?.color} bg-brand-100`}>
                   {BOOKING_STATUS_LABELS[activeBooking.status]?.label}
                 </span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                {activeBooking.reference_no}
+                {activeBooking.scheduled_date && (
+                  <> · {new Date(activeBooking.scheduled_date + 'T00:00:00').toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}</>
+                )}
+                {activeBooking.booking_services?.length > 0 && (
+                  <> · {activeBooking.booking_services.map(s => s.service_name).join(', ')}</>
+                )}
               </p>
             </div>
           </div>

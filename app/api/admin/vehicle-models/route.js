@@ -95,7 +95,7 @@ export async function PATCH(request) {
 
     const { id, model_name, brand, tier } = await request.json()
     if (!model_name || !tier) return NextResponse.json({ error: 'model_name and tier required' }, { status: 400 })
-    if (!['S', 'M', 'L', 'XL'].includes(tier)) return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
+    if (!['S', 'M', 'L', 'XL', 'MS', 'ML'].includes(tier)) return NextResponse.json({ error: 'Invalid tier' }, { status: 400 })
 
     const admin = createAdminClient()
     const payload = {
